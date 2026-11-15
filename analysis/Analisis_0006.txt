@@ -1,0 +1,39 @@
+Precisión Base (Ground Truth): 
+El conteo manual establece un Ground Truth de 46 salmones únicos deslizándose por la bandeja. 
+A nivel de secuencia, el detector logró etiquetar exitosamente a los 46 individuos 
+(descontando el error temporal de la doble caja para un mismo pez). Sin embargo, debido a la alta 
+densidad de individuos, esta secuencia presenta la mayor concentración de fallos críticos a nivel de 
+fotograma (Flickering, oclusión severa y detecciones tardías).
+
+Doble Detección (Sobre-segmentación): 
+El hallazgo más inusual se documentó en un fotograma donde el modelo asignó dos cajas delimitadoras 
+distintas a un mismo espécimen. En visión por computadora, esto indica que el modelo detectó características 
+fuertes en dos partes separadas del cuerpo (como la cabeza y la cola) y no logró unificarlas. Si bien el error 
+se estabilizó un segundo después, en la etapa de Seguimiento (Tracking) este fotograma específico podría generar 
+la creación momentánea de un ID "fantasma", alterando el conteo.
+
+Oclusión Severa Prolongada y Fusión Final: 
+Documentamos un evento donde un individuo se deslizó posicionándose sobre la cabeza de otro durante gran parte 
+de la trayectoria. Cerca del final del encuadre, la oclusión fue tan severa que el detector falló para ambos 
+al pez superior. Este es el escenario más destructivo para un algoritmo de seguimiento, ya que el pez inferior es 
+"borrado" del sistema antes de salir del encuadre.
+
+Detección Tardía (Late Detection): 
+En dos ocasiones, el modelo no logró inferir la presencia del salmón desde su ingreso, asignando la caja 
+delimitadora recién cuando el espécimen alcanzó la mitad de la bandeja. Esto nos indica que el modelo tiene 
+una zona de baja confianza en el ingreso de la bandeja, lo que obligará a nuestro módulo de Seguimiento a aceptar la 
+creación de nuevas trayectorias en zonas medias de la imagen, y no solo en los bordes.
+
+Anomalía de Postura y Alta Velocidad: 
+Se registró un caso donde un salmón se deslizó a gran velocidad con el cuerpo fuertemente curvado ("doblado"), 
+levantando gran cantidad de agua. Esta postura corporal anómala, sumada a la deformación visual por las salpicaduras y 
+posible desenfoque de movimiento (motion blur), reduce drásticamente la precisión de YOLO, ya que la silueta del pez se 
+aleja demasiado de los ejemplos estándar de entrenamiento.
+
+Se encontraron 473 cuadros válidos.
+
+--- ESTADÍSTICAS DE LA SECUENCIA ---
+Total de cuadros analizados: 473
+Cuadros que contienen al menos un salmón: 370
+Total de cajas (salmones etiquetados): 447
+Tamaño promedio de caja: 242.18 px de ancho x 264.80 px de alto

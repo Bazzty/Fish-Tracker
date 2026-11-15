@@ -1,0 +1,16 @@
+# Partición de los datos por secuencia completa (nunca por cuadro):
+# los cuadros vecinos son casi idénticos y repartirlos entre conjuntos
+# filtraría información de train a val/test.
+#
+# train: entrenamiento
+# val:   elegir hiperparámetros, tamaño de modelo (n/s) y época final
+# test:  se usa una sola vez, al final (criterio de éxito)
+train:        # 856 cuadros (65 %)
+  - seq_0001
+  - seq_0006
+val:          # 242 cuadros (18 %)
+  - seq_0002
+test:         # 218 cuadros (17 %)
+  - seq_0003
+  - seq_0004
+  - seq_0005

@@ -1,0 +1,38 @@
+Ground Truth y Falsos Negativos (El pez no detectado):
+El Ground Truth visual de esta secuencia es de 33 salmones, sin embargo, las etiquetas YOLO solo lograron 
+detectar 32. Tuvimos un Falso Negativo: un salmón no fue detectado en toda su trayectoria porque presentaba 
+una pose anómala (enrollado) y transitaba por el borde de la imagen. Esto nos indica que el modelo actual 
+tiene problemas generalizando peces que no tienen la forma 'típica' estirada o que sufren recortes en los 
+márgenes de la cámara.
+
+Falsos Positivos (El marco vacío):
+Identificamos Falsos Positivos (detecciones fantasma), donde el modelo dibujó una caja delimitadora sobre 
+el agua vacía o burbujas. Este es un problema crítico que deberemos mitigar en nuestro diseño del Seguimiento 
+(Tracking), por ejemplo, programando que una caja se descarte si no sobrevive en pantalla por más de 'X' 
+cuadros consecutivos.
+
+Oclusión Severa (Peces sobrepuestos):
+A diferencia de la secuencia 1, aquí observamos oclusión severa. Es positivo notar que el Detector logra 
+inferir ambos peces asignando cajas separadas a pesar de estar uno sobre el otro. Sin embargo, esto será 
+una prueba de fuego para nuestro módulo de Seguimiento: si las cajas se cruzan por completo, el algoritmo 
+podría intercambiar las identidades (ID switch).
+
+Parpadeo de Detección (Flickering):
+Observamos inestabilidad temporal en el detector o 'Flickering'. Al perder la caja por algunos cuadros, 
+el módulo de Seguimiento podría creer erróneamente que el pez desapareció y que el que reaparece es un 
+salmón nuevo, arruinando nuestra métrica de Conteo final. El algoritmo de seguimiento que diseñemos deberá 
+tener 'memoria' para esperar unos cuadros antes de dar a un pez por perdido.
+
+Inestabilidad de la caja (Cambio brusco de tamaño):
+Debido a la turbulencia, los salmones ingresan rodando, generando cambios bruscos en la relación de 
+aspecto (ancho/alto) de las cajas. Algoritmos de seguimiento simples que confían mucho en que el tamaño 
+del objeto se mantiene constante podrían fallar bajo estas condiciones dinámicas.
+
+Archivos totales en la carpeta: 484
+Se encontraron 242 cuadros válidos.
+
+--- ESTADÍSTICAS DE LA SECUENCIA ---
+Total de cuadros analizados: 242
+Cuadros que contienen al menos un salmón: 193
+Total de cajas (salmones etiquetados): 301
+Tamaño promedio de caja: 213.58 px de ancho x 285.60 px de alto

@@ -1,0 +1,8 @@
+# ByteTrack, valores por defecto de Ultralytics fijados aquí para que no cambien con la versión.
+# match_thresh no va aquí: se toma de config.yaml (conteo.match_thresh) porque se elige en validación.
+tracker_type: bytetrack
+track_high_thresh: 0.25   # primera asociación: cajas con confianza >= 0.25
+track_low_thresh: 0.1     # segunda asociación: cajas entre 0.1 y 0.25 (recupera peces tapados)
+new_track_thresh: 0.25    # confianza mínima para crear un ID nuevo
+track_buffer: 30          # cuadros que se conserva un ID perdido
+fuse_score: True          # combina confianza e IoU al asociar

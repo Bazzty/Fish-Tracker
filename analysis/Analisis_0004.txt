@@ -1,0 +1,32 @@
+Precisión general vs. Precisión local: 
+El Ground Truth establecido visualmente es de 9 
+salmones únicos. A nivel de secuencia, el detector logra encontrar a los 9 peces en algún 
+punto de su trayectoria. Sin embargo, este éxito general oculta fallos críticos de detección a 
+nivel de cuadro provocados por la densidad temporal.
+
+Oclusión severa y fusión de cajas (Under-segmentation): 
+El evento más alarmante ocurre al inicio, cuando 3 salmones ingresan simultáneamente solapándose 
+casi por completo. La situación empeora hacia el final del encuadre, donde 2 de estos peces nadan 
+tan juntos que el modelo falla al separarlos y genera una única caja delimitadora para ambos. Este 
+fenómeno es crítico: si dos objetos se fusionan en una sola caja, el algoritmo de Seguimiento (Tracking) 
+perderá inevitablemente una identidad, lo que resultará en un conteo final erróneo (contará 1 pez en lugar de 2).
+
+Niveles variables de Intersección: 
+Se identificaron 2 eventos de solapamiento en total. Además del clúster crítico del inicio, documentamos un 
+cruce posterior con un solapamiento leve en las esquinas de las cajas. Esto indica que el sistema debe estar 
+configurado para manejar distintos niveles de IoU (Intersección sobre Unión) a lo largo del video.
+
+Desbalance espacial de la trayectoria: 
+El canal de evaluación posee dos vías (izquierda y derecha). 
+Observamos una fuerte asimetría en el comportamiento: de los 9 peces, 8 transitan por 
+la derecha y solo 1 por la izquierda. Este desbalance espacial es un dato relevante para el 
+entrenamiento, ya que la red neuronal estará más expuesta a ejemplos visuales del lado derecho.
+
+Archivos totales en la carpeta: 128
+Se encontraron 64 cuadros válidos.
+
+--- ESTADÍSTICAS DE LA SECUENCIA ---
+Total de cuadros analizados: 64
+Cuadros que contienen al menos un salmón: 46
+Total de cajas (salmones etiquetados): 89
+Tamaño promedio de caja: 244.58 px de ancho x 251.37 px de alto

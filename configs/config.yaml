@@ -1,0 +1,53 @@
+# Configuración única del proyecto (Lab 15, contador de salmones).
+# Todas las rutas son relativas a la raíz del repositorio.
+
+proyecto:
+  semilla: 42
+  dispositivo: auto          # auto: GPU 0 si hay CUDA, si no MPS (Mac) o CPU. También: 0, cpu, mps
+  clase: fish
+
+rutas:
+  datos: data                         # seq_000X/images y seq_000X/labels (no se versiona)
+  split: configs/split.yaml           # partición por secuencia completa
+  conteo_real: configs/conteo_real.yaml
+  logs: logs                          # corridas de la grilla, tablas y criterio
+  pesos: weights                      # weights/best.pt = configuración elegida
+  salidas: outputs                    # videos anotados y eventos de conteo (no se versiona)
+
+# Fijo e igual en las 8 corridas: solo cambian los factores de la grilla.
+entrenamiento:
+  epocas: 100
+  paciencia: 20              # early stopping sobre la métrica de validación
+  lote: 16
+  workers: 2                 # en Windows más de 2 suele ir más lento
+  optimizador: SGD           # explícito: con "auto" Ultralytics ignora lr0 y la grilla no lo probaría
+  cache: false               # false | disk | ram (ram puede romper la reproducibilidad)
+
+grilla:                      # 2 x 2 x 2 = 8 corridas (R1..R8)
+  modelos: [yolo11n.pt, yolo11s.pt]
+  imgsz: [640, 960]
+  lr0: [0.01, 0.001]
+  empate_map50: 0.01         # diferencias menores se tratan como empate: gana la más simple
+  linea_base: [yolo11n.pt, yolo11s.pt]   # COCO sin entrenar, evaluadas sin distinguir clase
+
+# Evaluación del detector (mAP). conf bajo es el estándar para calcular mAP.
+evaluacion:
+  conf: 0.001
+  iou: 0.7                   # IoU del NMS
+  lote: 16
+
+# Seguimiento y conteo.
+conteo:
+  linea: 0.50                # fracción del alto desde arriba; se elige en validación entre las candidatas
+  lineas_candidatas: [0.40, 0.50, 0.60]
+  conf_detector: 0.10        # ByteTrack usa cajas de baja confianza (entre 0.10 y 0.25) en su segunda asociación
+  iou_nms: 0.7
+  tracker: configs/bytetrack.yaml
+  match_thresh: 0.8          # asociación de ByteTrack: une cajas con IoU > 1 - match_thresh (0.8 = por defecto)
+  match_thresh_candidatos: [0.8, 0.9, 0.95]   # se elige en validación junto con la línea
+  salto_reinicio: 10         # si entre dos cuadros faltan más de 10 números, se reinicia el seguimiento
+  fps_cuadros: 10            # fps del video anotado armado desde una carpeta de cuadros
+
+criterio:
+  map50_val_min: 0.90        # condición previa del detector, en validación
+  error_relativo_max: 0.10   # criterio principal, sobre el total de test

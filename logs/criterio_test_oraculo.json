@@ -1,0 +1,19 @@
+{
+  "split": "test",
+  "oraculo": true,
+  "pesos": null,
+  "conteo": [
+    {
+      "match_thresh": 0.8,
+      "linea": 0.5,
+      "reales": 25,
+      "contados": 22,
+      "error_abs": 3,
+      "error_rel": 0.12
+    }
+  ],
+  "umbrales": {
+    "map50_val_min": 0.9,
+    "error_relativo_max": 0.1
+  }
+}

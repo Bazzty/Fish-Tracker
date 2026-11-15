@@ -1,0 +1,5 @@
+split,secuencia,match_thresh,linea,reales,contados,error_abs,error_rel
+test,seq_0003,0.8,0.50,10,8,2,0.2
+test,seq_0004,0.8,0.50,9,8,1,0.1111
+test,seq_0005,0.8,0.50,6,6,0,0.0
+test,TOTAL,0.8,0.50,25,22,3,0.12

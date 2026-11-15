@@ -1,0 +1,10 @@
+{
+  "pesos": "weights/best.pt",
+  "sha256": "c384a62e4e501bcf0f8690d40f6f647a75e6c57f15ceed22948fcfbc4a80a2f8",
+  "split": "test",
+  "imgsz": 640,
+  "map50": 0.9685488614308968,
+  "map50_95": 0.6026300044380396,
+  "precision": 0.9098599673453145,
+  "recall": 0.8958333333333334
+}

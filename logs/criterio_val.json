@@ -1,0 +1,87 @@
+{
+  "split": "val",
+  "oraculo": false,
+  "pesos": "weights/best.pt",
+  "conteo": [
+    {
+      "match_thresh": 0.8,
+      "linea": 0.4,
+      "reales": 33,
+      "contados": 32,
+      "error_abs": 1,
+      "error_rel": 0.0303
+    },
+    {
+      "match_thresh": 0.8,
+      "linea": 0.5,
+      "reales": 33,
+      "contados": 32,
+      "error_abs": 1,
+      "error_rel": 0.0303
+    },
+    {
+      "match_thresh": 0.8,
+      "linea": 0.6,
+      "reales": 33,
+      "contados": 31,
+      "error_abs": 2,
+      "error_rel": 0.0606
+    },
+    {
+      "match_thresh": 0.9,
+      "linea": 0.4,
+      "reales": 33,
+      "contados": 30,
+      "error_abs": 3,
+      "error_rel": 0.0909
+    },
+    {
+      "match_thresh": 0.9,
+      "linea": 0.5,
+      "reales": 33,
+      "contados": 30,
+      "error_abs": 3,
+      "error_rel": 0.0909
+    },
+    {
+      "match_thresh": 0.9,
+      "linea": 0.6,
+      "reales": 33,
+      "contados": 30,
+      "error_abs": 3,
+      "error_rel": 0.0909
+    },
+    {
+      "match_thresh": 0.95,
+      "linea": 0.4,
+      "reales": 33,
+      "contados": 30,
+      "error_abs": 3,
+      "error_rel": 0.0909
+    },
+    {
+      "match_thresh": 0.95,
+      "linea": 0.5,
+      "reales": 33,
+      "contados": 30,
+      "error_abs": 3,
+      "error_rel": 0.0909
+    },
+    {
+      "match_thresh": 0.95,
+      "linea": 0.6,
+      "reales": 33,
+      "contados": 30,
+      "error_abs": 3,
+      "error_rel": 0.0909
+    }
+  ],
+  "umbrales": {
+    "map50_val_min": 0.9,
+    "error_relativo_max": 0.1
+  },
+  "recomendado": {
+    "linea": 0.5,
+    "match_thresh": 0.8
+  }
+}

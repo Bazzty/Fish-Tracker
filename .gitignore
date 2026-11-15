@@ -1,0 +1,33 @@
+data/
+.venv/
+.DS_Store
+__pycache__/
+*.pyc
+runs/
+_to_delete/
+/notebooks
+estadisticas_*.csv
+
+# Archivos de video y pruebas de salida
+*.mp4
+test_*.mp4
+output_*.mp4
+
+# Pesos preentrenados descargados por Ultralytics
+/*.pt
+weights/*.pt
+!weights/best.pt
+# Generados por los scripts
+outputs/
+runs/
+logs/**/*.pt
+logs/**/*.jpg
+logs/**/*.jpeg
+logs/prueba/
+logs/*/args.yaml
+*.bundle
+.claude/
+
+# Material de apoyo para la presentación: no se versiona
+informe/
+Fish-Counter-entrega.zip
