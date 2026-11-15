@@ -30,3 +30,7 @@ logs/*/args.yaml
 # Material de apoyo para la presentación: no se versiona
 informe/
 Contreras-Carrera.zip
+
+# Datos y corridas locales del equipo
+data_lab15_viejo/
+logs/yolo26_dat01/
