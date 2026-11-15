@@ -36,6 +36,19 @@ Una ejecución = una carpeta con 5 archivos, UTF-8, CSV con encabezado y separad
 - `trayectorias.csv`: `cuadro, tiempo_s, canal, id, x1, y1, x2, y2, conf, cx, cy` — `cx, cy` es el centro de la caja.
 - `conteos.csv`: `canal, id, cuadro, tiempo_s, conteo` — `cuadro` es el instante en que el pez se contó; `conteo` es el acumulado del canal tras ese evento.
 
+## Regla de conteo
+Define cuándo se escribe una fila en `conteos.csv`. Se aplica por canal, sobre `trayectorias.csv`.
+
+- **Qué es un pez:** una trayectoria `(canal, id)`. Cuenta **como máximo una vez** en todo el video.
+- **Posición del pez:** el centro de su caja (`cx`, `cy`). Los peces avanzan de arriba hacia abajo (`y` crece).
+- **Líneas del canal:** `y_A = y1 + linea_a · (y2 − y1)` e `y_B = y1 + linea_b · (y2 − y1)`, con `y1` e `y2` de la `caja` del canal.
+- **Línea base (`perfil: base`):** el pez cuenta en el primer cuadro en que su centro llega a la línea A desde arriba, es decir, cuando en el cuadro anterior en que se vio estaba sobre A (`cy < y_A`) y en este está en A o bajo ella (`cy ≥ y_A`).
+- **Variante (`perfil: variante`, histéresis):** el pez queda «armado» al estar sobre A y cuenta recién cuando su centro llega a la línea B (`cy ≥ y_B`). Si oscila entre A y B no se cuenta de nuevo. Se descartan las trayectorias más cortas que un mínimo de cuadros, y un ID nuevo que continúa a otro perdido hereda su estado, para no contarlo dos veces.
+- **Qué no cuenta:** los movimientos hacia arriba (no suman ni restan), un pez que aparece por primera vez ya bajo la línea sin haberla cruzado, y las detecciones sin trayectoria o fuera de todo canal.
+- **Momento del evento:** el `cuadro` y el `tiempo_s` son los del cuadro en que se cumple la regla.
+- **Tubo sin peces:** conteo `0` en `meta.json`, sin filas en `conteos.csv`.
+- **Referencia del Validador:** el conteo de referencia (tracker perfecto) se obtiene aplicando la regla de la línea base a las trayectorias etiquetadas, con los mismos canales. Si el curso define otra regla de conteo, esa reemplaza a esta y se sube `version`.
+
 ## Para corregir conteos (Validador)
 Para sumar o quitar un pez basta agregar o borrar su fila de `conteos.csv` y actualizar `meta.json` (`conteos`, `total`). El Tracker lee la carpeta con `tracker.formato.leer`, que la valida antes.
 
