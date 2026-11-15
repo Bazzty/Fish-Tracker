@@ -3,14 +3,68 @@
 # filtraría información de train a val/test.
 #
 # train: entrenamiento
-# val:   elegir hiperparámetros, tamaño de modelo (n/s) y época final
+# val:   elegir hiperparámetros, tamaño de modelo y época final
 # test:  se usa una sola vez, al final (criterio de éxito)
-train:        # 856 cuadros (65 %)
-  - seq_0001
-  - seq_0006
-val:          # 242 cuadros (18 %)
-  - seq_0002
-test:         # 218 cuadros (17 %)
-  - seq_0003
-  - seq_0004
-  - seq_0005
+#
+# Las secuencias lab15_* son el etiquetado del profesor (Lab 15) y van SOLO a
+# entrenamiento: el detector de la línea base ya se entrenó con ellas, así que
+# en validación o test inflarían las métricas y la comparación no diría nada.
+# La validación y el test se arman solo con DAT-01, el etiquetado del curso.
+train:        # 32 secuencias de DAT-01 + 6 del Lab 15
+  - seq_00008
+  - seq_00009
+  - seq_00018
+  - seq_00019
+  - seq_00022
+  - seq_00023
+  - seq_00024
+  - seq_00026
+  - seq_00027
+  - seq_00028
+  - seq_00029
+  - seq_00030
+  - seq_00034
+  - seq_00035
+  - seq_00038
+  - seq_00039
+  - seq_00040
+  - seq_00043
+  - seq_00047
+  - seq_00048
+  - seq_00049
+  - seq_00050
+  - seq_00051
+  - seq_00052
+  - seq_00053
+  - seq_00054
+  - seq_00056
+  - seq_00057
+  - seq_00058
+  - seq_00059
+  - seq_00060
+  - seq_00063
+  - lab15_sec1
+  - lab15_sec2
+  - lab15_sec3
+  - lab15_sec4
+  - lab15_sec5
+  - lab15_sec6
+val:          # 8 secuencias, solo DAT-01
+  - seq_00015
+  - seq_00016
+  - seq_00032
+  - seq_00033
+  - seq_00037
+  - seq_00041
+  - seq_00055
+  - seq_00061
+test:         # 9 secuencias, solo DAT-01
+  - seq_00010
+  - seq_00011
+  - seq_00012
+  - seq_00020
+  - seq_00021
+  - seq_00025
+  - seq_00031
+  - seq_00036
+  - seq_00046
