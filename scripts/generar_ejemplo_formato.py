@@ -1,70 +1,58 @@
-"""Genera docs/ejemplo_formato/: carpeta de ejemplo en el formato común para el Validador y la GUI.
+"""Genera docs/ejemplo_formato/: carpeta de ejemplo SINTÉTICA en el formato común.
 
-ES ILUSTRATIVO: usa el detector, ByteTrack y la regla de línea del Lab 15 (src/contar.py) con 2 canales
-(mitades izquierda y derecha del cuadro), solo para tener archivos reales. No es el conteo final:
-ese lo implementa tracker.conteo. Los canales no son tubos reales.
+No usa datos del curso ni del cliente: las cajas y trayectorias son inventadas y deterministas.
+Dos canales: canal_1 con 2 peces que cruzan la zona de conteo y canal_2 vacío (conteo 0),
+más una detección fuera de todo canal (columna 'canal' vacía).
 
 Uso:
-    uv run python scripts/secuencia_a_video.py seq_00015
-    uv run python scripts/generar_ejemplo_formato.py --video outputs/videos/seq_00015.mp4 --desde 120 --cuadros 120
+    uv run python scripts/generar_ejemplo_formato.py
+    uv run tracker validar docs/ejemplo_formato
 """
-import argparse
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
-from comun import cargar_config, ruta_abs  # noqa: E402
-from contar import contar_cruces, detectar_fuente, seguir  # noqa: E402
+from comun import ruta_abs  # noqa: E402
 from tracker import formato  # noqa: E402
 from tracker.canales import Canal  # noqa: E402
-from tracker.pipeline import Resultados, info_video  # noqa: E402
+from tracker.pipeline import Resultados  # noqa: E402
 
-p = argparse.ArgumentParser()
-p.add_argument("--video", required=True)
-p.add_argument("--desde", type=int, default=0)
-p.add_argument("--cuadros", type=int, default=120)
-p.add_argument("--salida", default="docs/ejemplo_formato")
-a = p.parse_args()
+FPS, ANCHO, ALTO, CUADROS = 10.0, 1280, 720, 60
+canales = [Canal("canal_1", (100, 0, 500, 720), "Tubo 1"),
+           Canal("canal_2", (700, 0, 1100, 720), "Tubo 2")]
+# (id, cuadro de entrada, x del centro, velocidad en px/cuadro, ancho, alto, confianza)
+peces = [(1, 0, 300, 18.0, 120, 160, 0.91), (2, 20, 260, 15.0, 110, 150, 0.84)]
 
-cfg = cargar_config()
-info = info_video(a.video)
-fps, ancho, alto = info["fps"], info["ancho"], info["alto"]
-canales = [Canal("canal_1", (0, 0, ancho / 2, alto), "Tubo izquierdo"),
-           Canal("canal_2", (ancho / 2, 0, ancho, alto), "Tubo derecho")]
-
-dets, _ = detectar_fuente(cfg, video=a.video, pesos=ruta_abs("weights/best.pt"))
-dets = [(i, i, c) for i, (_, _, c) in enumerate(dets[a.desde: a.desde + a.cuadros])]  # cuadros desde 0
-registros, _ = seguir(cfg, dets)
-
-res = Resultados(meta=dict(video=Path(a.video).name, perfil="base", pesos="weights/best.pt", fps=fps,
-                           ancho=ancho, alto=alto, cuadros=len(dets), solo_detectar=False,
-                           nota="ejemplo ilustrativo generado con el pipeline del Lab 15"),
+res = Resultados(meta=dict(video="ejemplo_sintetico.mp4", perfil="base", pesos="weights/best.pt", fps=FPS,
+                           ancho=ANCHO, alto=ALTO, cuadros=CUADROS, solo_detectar=False,
+                           nota="ejemplo sintético: cajas inventadas, no provienen de ningún video"),
                  canales=canales, conteos={c.id: 0 for c in canales})
-canal_de_id = {}
-for r in registros:  # cada ID pertenece al canal donde apareció primero
-    c = next((c for c in canales if c.contiene(r["cx"], r["cy"])), None)
-    canal_de_id.setdefault((r["segmento"], r["id"]), c)
-for c in canales:
-    mias = [r for r in registros if canal_de_id[(r["segmento"], r["id"])] is c]
-    for cr in contar_cruces(mias, c.y_linea(c.linea_a)):
-        res.conteos[c.id] += 1
-        res.eventos.append(dict(canal=c.id, id=cr["id"], cuadro=cr["cuadro"],
-                                tiempo_s=round(cr["cuadro"] / fps, 4), conteo=res.conteos[c.id]))
-res.eventos.sort(key=lambda e: e["cuadro"])
-for n, e in enumerate(res.eventos):  # acumulado por canal en orden temporal
-    e["conteo"] = sum(1 for x in res.eventos[: n + 1] if x["canal"] == e["canal"])
-for paso, _, cajas in dets:
-    for x1, y1, x2, y2, conf in cajas.data[:, :5].tolist():
-        c = next((c for c in canales if c.contiene((x1 + x2) / 2, (y1 + y2) / 2)), None)
-        res.detecciones.append(dict(cuadro=paso, tiempo_s=round(paso / fps, 4), canal=c.id if c else "",
-                                    x1=x1, y1=y1, x2=x2, y2=y2, conf=conf))
-for r in registros:
-    c = canal_de_id[(r["segmento"], r["id"])]
-    if c:
-        res.trayectorias.append(dict(cuadro=r["paso"], tiempo_s=round(r["paso"] / fps, 4), canal=c.id,
-                                     id=r["id"], x1=r["x1"], y1=r["y1"], x2=r["x2"], y2=r["y2"],
-                                     conf=r["conf"], cx=r["cx"], cy=r["cy"]))
-salida = formato.exportar(res, ruta_abs(a.salida))
+canal = canales[0]
+y_a = canal.y_linea(canal.linea_a)
+previo = {}
+for cuadro in range(CUADROS):
+    t = round(cuadro / FPS, 4)
+    for pid, entra, cx, v, w, h, conf in peces:
+        cy = -h / 2 + v * (cuadro - entra)
+        if cuadro < entra or cy - h / 2 > ALTO:
+            continue
+        caja = dict(x1=cx - w / 2, y1=max(0.0, cy - h / 2), x2=cx + w / 2, y2=min(float(ALTO), cy + h / 2))
+        cyc = (caja["y1"] + caja["y2"]) / 2
+        res.detecciones.append(dict(cuadro=cuadro, tiempo_s=t, canal=canal.id, **caja, conf=conf))
+        if cyc < 0:
+            continue
+        res.trayectorias.append(dict(cuadro=cuadro, tiempo_s=t, canal=canal.id, id=pid, **caja, conf=conf,
+                                     cx=float(cx), cy=cyc))
+        if pid in previo and previo[pid] < y_a <= cyc:
+            res.conteos[canal.id] += 1
+            res.eventos.append(dict(canal=canal.id, id=pid, cuadro=cuadro, tiempo_s=t,
+                                    conteo=res.conteos[canal.id]))
+        previo[pid] = cyc
+    if cuadro == 30:  # reflejo fuera de los tubos: se detecta pero no pertenece a ningún canal
+        res.detecciones.append(dict(cuadro=cuadro, tiempo_s=t, canal="", x1=580.0, y1=300.0, x2=640.0,
+                                    y2=360.0, conf=0.22))
+
+salida = formato.exportar(res, ruta_abs("docs/ejemplo_formato"))
 errores = formato.validar(salida)
 print(f"[OK] {salida}  conteos {res.conteos}  validación: {'sin errores' if not errores else errores}")
