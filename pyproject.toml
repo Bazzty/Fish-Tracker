@@ -1,5 +1,5 @@
 [project]
-name = "fish-counter"
+name = "fish-tracker"
 version = "0.3.0"
 description = "Tracker: contador de salmones por canal (detector YOLO, seguimiento y conteo por tubo)"
 readme = "README.md"

@@ -381,7 +381,7 @@ wheels = [
 ]
 
 [[package]]
-name = "fish-counter"
+name = "fish-tracker"
 version = "0.3.0"
 source = { editable = "." }
 dependencies = [

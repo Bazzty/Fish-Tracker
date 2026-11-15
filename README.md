@@ -1,4 +1,4 @@
-# Fish-Counter
+# Fish-Tracker
 
 Sistema que detecta, sigue y cuenta salmones en video.
 USS-ICIFH001 · Inteligencia Artificial · Lab 15 (base) y Solemne 3 (Tracker, cliente Duotek).
