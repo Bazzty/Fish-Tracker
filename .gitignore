@@ -26,8 +26,7 @@ logs/**/*.jpeg
 logs/prueba/
 logs/*/args.yaml
 *.bundle
-.claude/
 
 # Material de apoyo para la presentación: no se versiona
 informe/
-Fish-Counter-entrega.zip
+Contreras-Carrera.zip

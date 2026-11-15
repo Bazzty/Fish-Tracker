@@ -5,10 +5,10 @@ USS-ICIFH001 · Inteligencia Artificial · Lab 15.
 
 ## Inicio rápido
 
-Al descomprimir el zip queda la carpeta `Fish-Counter/`; todos los comandos se ejecutan desde ahí. Los datos no se incluyen: ver la sección Datos.
+Al descomprimir el zip queda la carpeta `Contreras-Carrera/`; todos los comandos se ejecutan desde ahí. Los datos no se incluyen: ver la sección Datos.
 
 ```powershell
-cd Fish-Counter
+cd Contreras-Carrera
 uv sync
 uv run python src/entrenar.py --nombre prueba --epocas 1
 uv run python src/evaluar.py --split val
@@ -46,7 +46,7 @@ Limitaciones: ByteTrack se evalúa en benchmarks de personas y ningún paper cit
 ## Estructura
 
 ```
-Fish-Counter/
+Contreras-Carrera/
 ├── README.md
 ├── pyproject.toml / uv.lock
 ├── configs/
@@ -153,4 +153,4 @@ uv run python src/contar.py --seq seq_0003 --oraculo
 - Semilla 42, `deterministic=True`, optimizador SGD explícito (con `optimizer: auto` Ultralytics ignora `lr0`).
 - `evaluar.py` usa el `imgsz` guardado en los pesos y umbrales fijos (`conf 0.001`, `iou 0.7`, lote 16).
 - `plots=False`: Ultralytics no guarda imágenes del dataset en `logs/`. Los datos no salen de `data/`.
-- Entrega: `git archive --format=zip --prefix=grupo-N/ -o grupo-N.zip HEAD` (incluye solo lo versionado: sin `data/`, `.venv/` ni `outputs/`).
+- Entrega: `git archive --format=zip --prefix=Contreras-Carrera/ -o Contreras-Carrera.zip HEAD` (incluye solo lo versionado: sin `data/`, `.venv/` ni `outputs/`).
