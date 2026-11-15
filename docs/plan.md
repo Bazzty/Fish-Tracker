@@ -16,7 +16,7 @@ Estados: **hecha** · **en curso** · **pendiente**. Todo lo nuevo vive en `src/
 | Alonso | Revisión de consistencia entre etiquetados | `docs/` (informe) | pendiente |
 | Alonso | Seguimiento por canal (ByteTrack) | `src/tracker/seguimiento.py` | pendiente (stub con contrato) |
 | Alonso | Conteo por canal, línea simple | `src/tracker/conteo.py` | pendiente (stub con contrato) |
-| Alonso | Conteo manual por canal de val y test | `configs/conteo_real.yaml` | pendiente (hoy tiene las secuencias antiguas) |
+| Alonso | Referencia de conteo por canal de val y test, aplicando la regla de conteo a las trayectorias de DAT-02 | `configs/conteo_real.yaml` | pendiente (hoy tiene las secuencias antiguas) |
 | Angelo | Interfaz: abrir video, dibujar tubos y zona, guardar JSON | `src/tracker/gui/` | pendiente (stub) |
 | Angelo | Pantalla de resultados con datos de ejemplo | `src/tracker/gui/`, `docs/ejemplo_formato/` | pendiente |
 | Angelo | Diagnóstico del seguimiento con YOLO11 | `docs/` (informe) | pendiente |
