@@ -1,7 +1,34 @@
 # Fish-Counter
 
 Sistema que detecta, sigue y cuenta salmones en video.
-USS-ICIFH001 · Inteligencia Artificial · Lab 15.
+USS-ICIFH001 · Inteligencia Artificial · Lab 15 (base) y Solemne 3 (Tracker, cliente Duotek).
+
+## Tracker (Solemne 3)
+
+Aplicación de escritorio que abre un video, deja marcar los tubos (canales) y cuenta los salmones de cada uno sin contar dos veces el mismo pez. Intercambia archivos con el Validador en un [formato común](docs/formato_comun.md). Plan, responsables y estado: [`docs/plan.md`](docs/plan.md).
+
+```powershell
+uv sync
+uv run tracker                                                  # abre la aplicación (interfaz en construcción)
+uv run python scripts/secuencia_a_video.py seq_00015            # arma un video de prueba desde data/
+uv run tracker inferir --video outputs/videos/seq_00015.mp4 --salida outputs/inferencia/seq_00015
+uv run tracker validar docs/ejemplo_formato                     # comprueba una carpeta contra el formato común
+```
+
+| Qué | Dónde |
+|---|---|
+| Contrato `procesar(video, canales, perfil) -> Resultados` | `src/tracker/pipeline.py` |
+| Canal y zona de conteo (JSON) | `src/tracker/canales.py` |
+| Detector por cuadro (solo cambian los pesos) | `src/tracker/detector.py` |
+| Seguimiento por canal (Alonso, pendiente) | `src/tracker/seguimiento.py` |
+| Conteo: línea simple e histéresis (Alonso, pendiente) | `src/tracker/conteo.py` |
+| Interfaz (Angelo, pendiente) | `src/tracker/gui/` |
+| Exportar, leer y validar el formato común | `src/tracker/formato.py` |
+| Línea base y variante | `configs/perfiles/base.yaml`, `variante.yaml` |
+
+Línea base de detección (YOLO11 del Lab 15 en la validación nueva, 8 secuencias de DAT-01): mAP@50 **0,9436** ([tabla](docs/tablas/map50_yolo11_val.md)).
+
+> Lo que sigue (diseño, partición, reproducción y resultados) describe el **Lab 15** y su partición antigua de 6 secuencias; sus cifras no valen para la Solemne 3.
 
 ## Inicio rápido
 
