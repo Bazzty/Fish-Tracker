@@ -54,14 +54,32 @@ Define cuándo se escribe una fila en `conteos.csv`. Se aplica por canal, sobre 
 ## Para corregir conteos (Validador)
 Para sumar o quitar un pez basta agregar o borrar su fila de `conteos.csv` y actualizar `meta.json` (`conteos`, `total`). El Tracker lee la carpeta con `tracker.formato.leer`, que la valida antes.
 
-## Propuesta (no vigente): archivos por canal
-Hoy los CSV traen todos los canales juntos y se separan por la columna `canal`. Si se necesitan archivos por tubo, las alternativas son:
+## Propuesta versión 2: un archivo de trayectorias por canal
+**Estado:** requisito del profesor (un tracker por canal), pendiente de revisión por el equipo del Validador. El Tracker la implementará una vez acordada.
 
-1. **Sin cambios:** filtrar por `canal` al analizar (p. ej. `df[df.canal == "canal_1"]`).
-2. **Carpeta por canal:** `salida/canal_1/{detecciones,trayectorias,conteos}.csv`, con `meta.json` y `canales.json` globales. Rompe `leer` y `validar`, que deben recorrer las subcarpetas; sube `version`.
-3. **Copias adicionales por canal:** se mantienen los 5 archivos y se agregan `trayectorias_canal_1.csv`, etc. Compatible con la versión 1, pero duplica datos que el Validador debería comprobar que coincidan.
+**Qué cambia.** `trayectorias.csv` se reemplaza por un archivo por canal activo, `trayectorias_<id>.csv` (p. ej. `trayectorias_canal_1.csv`), con las mismas columnas. El resto queda igual:
 
-Recomendación del Tracker: opción 3 si el requisito es solo entregar por tubo; la 2 solo si se rediseña el formato. Requiere acuerdo de ambos equipos.
+```
+salida/
+  meta.json                 # version: 2
+  canales.json              # copia del archivo del ground truth
+  detecciones.csv           # global
+  trayectorias_canal_1.csv
+  trayectorias_canal_2.csv
+  conteos.csv               # global
+```
+
+- Hay un archivo por **cada canal activo**; un tubo sin peces trae solo el encabezado.
+- La columna `canal` se mantiene (redundante con el nombre del archivo) para que los archivos se puedan concatenar sin perder el dato.
+- `conteos.csv` y `detecciones.csv` siguen globales: los conteos se leen juntos para todos los tubos, y las detecciones son un dato intermedio que incluye filas sin canal.
+
+**Por qué.** Sigue el criterio de MOTChallenge (TrackEval, py-motmetrics): un archivo de tracks por secuencia, y las métricas (MOTA, IDF1, HOTA) se calculan por secuencia. Cada canal actúa como una secuencia, ya que los `id` son únicos dentro de su canal, así que el Validador compara un archivo del Tracker contra uno del ground truth por tubo.
+
+**Para decidir con el Validador.**
+1. ¿El ground truth también se entrega por canal, con el mismo nombre de archivo?
+2. ¿Se adopta el orden de columnas de MOT (`cuadro, id, x1, y1, w, h, conf`) para usar TrackEval sin conversión, o se mantienen las actuales?
+
+**Cambios en el Tracker.** `formato.exportar`, `leer` y `validar` (buscar `trayectorias_*.csv` y exigir uno por canal activo), el ejemplo de `docs/ejemplo_formato/` y `VERSION` en `meta.json`.
 
 ## Cambios
 Todo cambio de columnas sube `version` y se avisa a ambos equipos.
