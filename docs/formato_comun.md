@@ -29,6 +29,8 @@ Una ejecución = una carpeta con 5 archivos, UTF-8, CSV con encabezado y separad
  "canales": [{"id": "canal_1", "caja": [100, 0, 500, 720], "nombre": "Tubo 1",
               "linea_a": 0.4, "linea_b": 0.6, "activo": true, "forma": "rect"}]}
 ```
+**Origen (por ahora):** los canales vienen del ground truth. El Validador entrega `canales.json` como archivo aparte y el Tracker lo usa tal cual (`uv run tracker procesar --canales canales.json …`, o **Cargar canales…** en la GUI para revisarlo); el Tracker no los redefine. El `canales.json` de la carpeta de salida es una copia de ese archivo.
+
 `caja` = `[x1, y1, x2, y2]` en píxeles. `linea_a` y `linea_b` son fracciones del alto del canal medidas desde su borde superior (`0 ≤ a < b ≤ 1`); los peces avanzan de arriba hacia abajo. `forma` es siempre `"rect"` en la versión 1.
 
 ## Columnas
@@ -47,7 +49,7 @@ Define cuándo se escribe una fila en `conteos.csv`. Se aplica por canal, sobre 
 - **Qué no cuenta:** los movimientos hacia arriba (no suman ni restan), un pez que aparece por primera vez ya bajo la línea sin haberla cruzado, y las detecciones sin trayectoria o fuera de todo canal.
 - **Momento del evento:** el `cuadro` y el `tiempo_s` son los del cuadro en que se cumple la regla.
 - **Tubo sin peces:** conteo `0` en `meta.json`, sin filas en `conteos.csv`.
-- **Referencia del Validador:** el conteo de referencia (tracker perfecto) se obtiene aplicando la regla de la línea base a las trayectorias etiquetadas, con los mismos canales. Si el curso define otra regla de conteo, esa reemplaza a esta y se sube `version`.
+- **Referencia del Validador:** el conteo de referencia (tracker perfecto) se obtiene aplicando la regla de la línea base a las trayectorias etiquetadas, con los canales del ground truth (el mismo `canales.json` que recibe el Tracker). Si el curso define otra regla de conteo, esa reemplaza a esta y se sube `version`.
 
 ## Para corregir conteos (Validador)
 Para sumar o quitar un pez basta agregar o borrar su fila de `conteos.csv` y actualizar `meta.json` (`conteos`, `total`). El Tracker lee la carpeta con `tracker.formato.leer`, que la valida antes.
