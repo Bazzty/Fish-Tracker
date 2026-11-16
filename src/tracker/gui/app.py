@@ -13,7 +13,7 @@ import sys
 from pathlib import Path
 
 import cv2
-from PySide6.QtCore import Qt, QTimer
+from PySide6.QtCore import QEvent, Qt, QTimer
 from PySide6.QtGui import QImage, QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QApplication, QFileDialog, QHBoxLayout, QInputDialog, QLabel, QListWidget,
@@ -106,6 +106,7 @@ class MainWindow(QMainWindow):
         self.list = QListWidget()
         self.list.itemChanged.connect(self._on_item_changed)
         self.list.currentRowChanged.connect(self._on_row_changed)
+        self.list.installEventFilter(self)  # la lista conserva Espacio y flechas
 
         hint = QLabel("Líneas A y B: zona de conteo (los peces avanzan de arriba hacia abajo). "
                       "En modo edición, arrastra los círculos amarillos para moverlas.")
@@ -134,6 +135,23 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(central)
         self.statusBar().showMessage("Abre un video para comenzar.")
 
+    def eventFilter(self, obj, event) -> bool:
+        if obj is self.list and event.type() == QEvent.ShortcutOverride \
+                and event.key() in (Qt.Key_Space, Qt.Key_Left, Qt.Key_Right):
+            event.accept()  # evita que el atajo de la ventana consuma la tecla
+            return True
+        return super().eventFilter(obj, event)
+
+    def _confirm_discard(self, accion: str) -> bool:
+        """Pide confirmación si hay tubos que se perderían."""
+        if not self.channels:
+            return True
+        r = QMessageBox.question(
+            self, "Descartar tubos",
+            f"Hay {len(self.channels)} tubo(s) que se perderán si no los guardaste.\n¿{accion}?",
+        )
+        return r == QMessageBox.Yes
+
     # ---- API para integración ----
     def selected_channels(self) -> list[Canal]:
         """Canales marcados para analizar (activo=True)."""
@@ -157,7 +175,11 @@ class MainWindow(QMainWindow):
                 f"No se pudo abrir o leer el video:\n{path}\n\nVerifica que el archivo exista y sea un video válido.",
             )
             return False
+        if not self._confirm_discard("Abrir el video de todos modos"):
+            cap.release()
+            return False
         self.pause()
+        self.canvas.cancel_drawing()
         if self.cap is not None:
             self.cap.release()
         self.cap, self.video_path = cap, Path(path)
@@ -337,12 +359,12 @@ class MainWindow(QMainWindow):
 
     def delete_channel(self) -> None:
         row = self.list.currentRow()
-        if row < 0 and len(self.channels) == 1:
-            row = 0
         if row < 0:
             self.statusBar().showMessage("Haz clic en el nombre de un tubo de la lista para elegirlo y luego Eliminar.")
             return
         name = self.channels[row].nombre
+        if QMessageBox.question(self, "Eliminar tubo", f"¿Eliminar '{name}'?") != QMessageBox.Yes:
+            return
         del self.channels[row]
         self._refresh_list(keep_row=row)
         self.statusBar().showMessage(f"'{name}' eliminado.")
@@ -401,6 +423,8 @@ class MainWindow(QMainWindow):
                 f"Los canales se marcaron en un video de {size[0]}x{size[1]} y el actual es "
                 f"{self.frame_size[0]}x{self.frame_size[1]}. No se cargaron.",
             )
+            return False
+        if not self._confirm_discard("Cargar los canales del archivo"):
             return False
         self.canvas.set_editing(None)
         self.channels = channels
