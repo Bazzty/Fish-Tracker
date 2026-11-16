@@ -26,8 +26,19 @@ logs/**/*.jpeg
 logs/prueba/
 logs/*/args.yaml
 *.bundle
-.claude/
 
 # Material de apoyo para la presentación: no se versiona
 informe/
-Fish-Counter-entrega.zip
+Contreras-Carrera.zip
+
+# Datos y corridas locales del equipo
+data_lab15_viejo/
+logs/yolo26_dat01/
+
+# Nunca versionar datos de entrenamiento, aunque queden fuera de data/
+*.jpg
+*.jpeg
+**/images/
+**/labels/
+labels.cache
+*.cache

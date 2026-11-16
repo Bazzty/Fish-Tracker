@@ -1,0 +1,14 @@
+# Variante propia. PENDIENTE: los pesos YOLO26 se entrenan en la semana 2 (Bastian) y el
+# tracker y el conteo con histéresis los fija Alonso; hasta entonces este perfil no se puede usar.
+nombre: variante
+detector:
+  pesos: weights/yolo26_dat01.pt   # aún no existe
+  conf: 0.10
+  iou: 0.7
+tracker:
+  tipo: bytetrack                  # se cambia por el mejor tras la comparación (BoT-SORT, OC-SORT)
+  config: configs/bytetrack.yaml   # con track_buffer y umbrales ajustados
+  match_thresh: 0.8
+conteo:
+  tipo: histeresis                 # A -> B + filtro de trayectorias cortas + herencia de estado
+  min_cuadros: 5

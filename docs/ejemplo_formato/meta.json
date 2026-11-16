@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "video": "ejemplo_sintetico.mp4",
+  "perfil": "base",
+  "pesos": "weights/best.pt",
+  "fps": 10.0,
+  "ancho": 1280,
+  "alto": 720,
+  "cuadros": 60,
+  "solo_detectar": false,
+  "nota": "ejemplo sintético: cajas inventadas, no provienen de ningún video",
+  "conteos": {
+    "canal_1": 2,
+    "canal_2": 0
+  },
+  "total": 2
+}
