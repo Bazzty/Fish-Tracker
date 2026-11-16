@@ -11,6 +11,7 @@ dependencies = [
     "opencv-python",
     "pandas",                 # src/analisis.py
     "pillow",
+    "pyside6>=6.12.0",
     "pyyaml",
     "torch>=2.7",             # 2.7+ con CUDA 12.8 soporta RTX 50 (Blackwell, sm_120)
     "torchvision>=0.22",
