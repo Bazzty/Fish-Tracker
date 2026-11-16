@@ -52,5 +52,14 @@ Define cuándo se escribe una fila en `conteos.csv`. Se aplica por canal, sobre 
 ## Para corregir conteos (Validador)
 Para sumar o quitar un pez basta agregar o borrar su fila de `conteos.csv` y actualizar `meta.json` (`conteos`, `total`). El Tracker lee la carpeta con `tracker.formato.leer`, que la valida antes.
 
+## Propuesta (no vigente): archivos por canal
+Hoy los CSV traen todos los canales juntos y se separan por la columna `canal`. Si se necesitan archivos por tubo, las alternativas son:
+
+1. **Sin cambios:** filtrar por `canal` al analizar (p. ej. `df[df.canal == "canal_1"]`).
+2. **Carpeta por canal:** `salida/canal_1/{detecciones,trayectorias,conteos}.csv`, con `meta.json` y `canales.json` globales. Rompe `leer` y `validar`, que deben recorrer las subcarpetas; sube `version`.
+3. **Copias adicionales por canal:** se mantienen los 5 archivos y se agregan `trayectorias_canal_1.csv`, etc. Compatible con la versión 1, pero duplica datos que el Validador debería comprobar que coincidan.
+
+Recomendación del Tracker: opción 3 si el requisito es solo entregar por tubo; la 2 solo si se rediseña el formato. Requiere acuerdo de ambos equipos.
+
 ## Cambios
 Todo cambio de columnas sube `version` y se avisa a ambos equipos.
