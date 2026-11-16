@@ -73,11 +73,7 @@ salida/
 - La columna `canal` se mantiene (redundante con el nombre del archivo) para que los archivos se puedan concatenar sin perder el dato.
 - `conteos.csv` y `detecciones.csv` siguen globales: los conteos se leen juntos para todos los tubos, y las detecciones son un dato intermedio que incluye filas sin canal.
 
-**Por qué.** Sigue el criterio de MOTChallenge (TrackEval, py-motmetrics): un archivo de tracks por secuencia, y las métricas (MOTA, IDF1, HOTA) se calculan por secuencia. Cada canal actúa como una secuencia, ya que los `id` son únicos dentro de su canal, así que el Validador compara un archivo del Tracker contra uno del ground truth por tubo.
-
-**Para decidir con el Validador.**
-1. ¿El ground truth también se entrega por canal, con el mismo nombre de archivo?
-2. ¿Se adopta el orden de columnas de MOT (`cuadro, id, x1, y1, w, h, conf`) para usar TrackEval sin conversión, o se mantienen las actuales?
+**Por qué.** El ground truth del Validador se entrega por canal, así que cada archivo del Tracker se compara directamente con el archivo del ground truth del mismo tubo. Los `id` ya son únicos dentro de su canal, por lo que separar no cambia su significado.
 
 **Cambios en el Tracker.** `formato.exportar`, `leer` y `validar` (buscar `trayectorias_*.csv` y exigir uno por canal activo), el ejemplo de `docs/ejemplo_formato/` y `VERSION` en `meta.json`.
 
