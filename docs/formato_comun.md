@@ -29,6 +29,8 @@ Una ejecución = una carpeta con 5 archivos, UTF-8, CSV con encabezado y separad
  "canales": [{"id": "canal_1", "caja": [100, 0, 500, 720], "nombre": "Tubo 1",
               "linea_a": 0.4, "linea_b": 0.6, "activo": true, "forma": "rect"}]}
 ```
+**Origen (por ahora):** los canales vienen del ground truth. El Validador entrega `canales.json` como archivo aparte y el Tracker lo usa tal cual (`uv run tracker procesar --canales canales.json …`, o **Cargar canales…** en la GUI para revisarlo); el Tracker no los redefine. El `canales.json` de la carpeta de salida es una copia de ese archivo.
+
 `caja` = `[x1, y1, x2, y2]` en píxeles. `linea_a` y `linea_b` son fracciones del alto del canal medidas desde su borde superior (`0 ≤ a < b ≤ 1`); los peces avanzan de arriba hacia abajo. `forma` es siempre `"rect"` en la versión 1.
 
 ## Columnas
@@ -47,10 +49,33 @@ Define cuándo se escribe una fila en `conteos.csv`. Se aplica por canal, sobre 
 - **Qué no cuenta:** los movimientos hacia arriba (no suman ni restan), un pez que aparece por primera vez ya bajo la línea sin haberla cruzado, y las detecciones sin trayectoria o fuera de todo canal.
 - **Momento del evento:** el `cuadro` y el `tiempo_s` son los del cuadro en que se cumple la regla.
 - **Tubo sin peces:** conteo `0` en `meta.json`, sin filas en `conteos.csv`.
-- **Referencia del Validador:** el conteo de referencia (tracker perfecto) se obtiene aplicando la regla de la línea base a las trayectorias etiquetadas, con los mismos canales. Si el curso define otra regla de conteo, esa reemplaza a esta y se sube `version`.
+- **Referencia del Validador:** el conteo de referencia (tracker perfecto) se obtiene aplicando la regla de la línea base a las trayectorias etiquetadas, con los canales del ground truth (el mismo `canales.json` que recibe el Tracker). Si el curso define otra regla de conteo, esa reemplaza a esta y se sube `version`.
 
 ## Para corregir conteos (Validador)
 Para sumar o quitar un pez basta agregar o borrar su fila de `conteos.csv` y actualizar `meta.json` (`conteos`, `total`). El Tracker lee la carpeta con `tracker.formato.leer`, que la valida antes.
+
+## Propuesta versión 2: un archivo de trayectorias por canal
+**Estado:** requisito del profesor (un tracker por canal), pendiente de revisión por el equipo del Validador. El Tracker la implementará una vez acordada.
+
+**Qué cambia.** `trayectorias.csv` se reemplaza por un archivo por canal activo, `trayectorias_<id>.csv` (p. ej. `trayectorias_canal_1.csv`), con las mismas columnas. El resto queda igual:
+
+```
+salida/
+  meta.json                 # version: 2
+  canales.json              # copia del archivo del ground truth
+  detecciones.csv           # global
+  trayectorias_canal_1.csv
+  trayectorias_canal_2.csv
+  conteos.csv               # global
+```
+
+- Hay un archivo por **cada canal activo**; un tubo sin peces trae solo el encabezado.
+- La columna `canal` se mantiene (redundante con el nombre del archivo) para que los archivos se puedan concatenar sin perder el dato.
+- `conteos.csv` y `detecciones.csv` siguen globales: los conteos se leen juntos para todos los tubos, y las detecciones son un dato intermedio que incluye filas sin canal.
+
+**Por qué.** El ground truth del Validador se entrega por canal, así que cada archivo del Tracker se compara directamente con el archivo del ground truth del mismo tubo. Los `id` ya son únicos dentro de su canal, por lo que separar no cambia su significado.
+
+**Cambios en el Tracker.** `formato.exportar`, `leer` y `validar` (buscar `trayectorias_*.csv` y exigir uno por canal activo), el ejemplo de `docs/ejemplo_formato/` y `VERSION` en `meta.json`.
 
 ## Cambios
 Todo cambio de columnas sube `version` y se avisa a ambos equipos.

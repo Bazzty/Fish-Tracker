@@ -4,6 +4,7 @@
     uv run tracker inferir --video v.mp4 --salida outputs/v        # solo detector: detecciones guardadas
     uv run tracker procesar --video v.mp4 --canales c.json --salida outputs/v [--perfil base]
     uv run tracker validar outputs/v                 # comprueba una carpeta contra el formato común
+    uv run tracker evaluar-seguimiento --conjunto val [--trackers configs/bytetrack.yaml configs/botsort.yaml] [--oraculo]
 """
 import argparse
 import sys
@@ -29,6 +30,30 @@ def _ejecutar(video: str, canales: list[Canal], perfil, salida: str, solo_detect
     return 0
 
 
+def _evaluar_seguimiento(a) -> int:
+    from comun import cargar_config, ruta_abs, secuencias
+    from tracker.evaluar_seguimiento import con_gt, evaluar
+    from tracker.pipeline import cargar_perfil
+
+    cfg = cargar_config()
+    perfil = cargar_perfil(a.perfil)
+    disponibles = con_gt(cfg)
+    seqs = a.seq or [s for s in secuencias(cfg, a.conjunto) if s in disponibles]
+    if not seqs:
+        raise ValueError(f"No hay secuencias de '{a.conjunto}' con gt.txt en {cfg['rutas']['tracking']}")
+    trackers = a.trackers or [perfil["tracker"]["config"]]
+    salida = ruta_abs(cfg["rutas"]["salidas"]) / "evaluacion_seguimiento" / (perfil["nombre"] + ("_oraculo" if a.oraculo else ""))
+    filas = evaluar(cfg, perfil, seqs, trackers, salida, a.oraculo)
+    print("=" * 60)
+    for r in filas:
+        if r["secuencia"] == "TOTAL":
+            print(f"  {r['tracker']:10s} IDF1 {r['IDF1']:.1%} | IDSW {r['IDSW']} | MOTA {r['MOTA']:.1%} | "
+                  f"peces GT {r['peces_gt']} | IDs {r['ids_tracker']}")
+    print(f"  Salidas : {salida}")
+    print("=" * 60)
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(prog="tracker", description="Contador de salmones por canal.")
     sub = p.add_subparsers(dest="orden")
@@ -43,9 +68,17 @@ def main(argv: list[str] | None = None) -> int:
     pro.add_argument("--perfil", default="base")
     val = sub.add_parser("validar", help="valida una carpeta del formato común")
     val.add_argument("carpeta")
+    evs = sub.add_parser("evaluar-seguimiento", help="IDF1, ID switches y MOTA contra las trayectorias de DAT-02")
+    evs.add_argument("--conjunto", default="val")
+    evs.add_argument("--seq", nargs="+", help="secuencias concretas (en vez de --conjunto)")
+    evs.add_argument("--perfil", default="base")
+    evs.add_argument("--trackers", nargs="+", help="YAMLs a comparar; por defecto el del perfil")
+    evs.add_argument("--oraculo", action="store_true", help="cajas del GT en vez del detector")
     a = p.parse_args(argv)
 
     try:
+        if a.orden == "evaluar-seguimiento":
+            return _evaluar_seguimiento(a)
         if a.orden == "validar":
             errores = formato.validar(a.carpeta)
             print("\n".join(errores) if errores else "[OK] La carpeta cumple el formato común.")
