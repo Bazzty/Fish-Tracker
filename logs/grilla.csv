@@ -1,9 +1,0 @@
-corrida,modelo,imgsz,lr0,epocas,map50,map50_95,precision,recall,minutos,pesos
-R1,yolo11n.pt,640,0.01,45,0.9101,0.554,0.8375,0.8704,5.0,logs/R1/weights/best.pt
-R2,yolo11n.pt,640,0.001,33,0.9431,0.5849,0.8731,0.9141,3.6,logs/R2/weights/best.pt
-R5,yolo11s.pt,640,0.01,21,0.8951,0.5351,0.8456,0.8405,2.6,logs/R5/weights/best.pt
-R6,yolo11s.pt,640,0.001,38,0.9491,0.5886,0.8865,0.9236,4.0,logs/R6/weights/best.pt
-R3,yolo11n.pt,960,0.01,55,0.908,0.5464,0.8578,0.8571,8.3,logs/R3/weights/best.pt
-R4,yolo11n.pt,960,0.001,57,0.9332,0.5858,0.8998,0.9037,8.4,logs/R4/weights/best.pt
-R7,yolo11s.pt,960,0.01,80,0.8966,0.5594,0.8172,0.887,12.3,logs/R7/weights/best.pt
-R8,yolo11s.pt,960,0.001,51,0.9213,0.5878,0.9006,0.8837,8.2,logs/R8/weights/best.pt
