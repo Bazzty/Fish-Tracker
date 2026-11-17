@@ -12,11 +12,11 @@ Estados: **hecha** · **en curso** · **pendiente**. Todo lo nuevo vive en `src/
 | Bastian | Pesos YOLO11 y script de inferencia por cuadro | `src/tracker/detector.py`, `uv run tracker inferir`, `scripts/secuencia_a_video.py` | hecha (probado en `seq_00015`) |
 | Bastian | Formato común con archivo de ejemplo | `docs/formato_comun.md`, `src/tracker/formato.py`, `docs/ejemplo_formato/` | en curso (falta que lo acepte un equipo del Validador) |
 | Bastian | mAP@50 de YOLO11 en la validación nueva | `docs/tablas/map50_yolo11_val.md`, `logs/evaluacion_val_best.json` | hecha (0,9436) |
-| Alonso | Secuencias de entrenamiento y split | `data/`, `configs/split.yaml` | hecha |
+| Alonso | Secuencias de entrenamiento y split | `data/`, `configs/split.yaml`, `scripts/preparar_split.py` | hecha (`scripts/preparar_split.py`: dos `data.yaml` en `runs/` y [tabla](tablas/cuadros_por_split.md): 69 / 16 / 15 % de cuadros y cajas) |
 | Alonso | Revisión de consistencia entre etiquetados | `docs/` (informe) | pendiente |
-| Alonso | Seguimiento por canal (ByteTrack) | `src/tracker/seguimiento.py` | pendiente (stub con contrato) |
-| Alonso | Conteo por canal, línea simple | `src/tracker/conteo.py` | pendiente (stub con contrato) |
-| Alonso | Referencia de conteo por canal de val y test, aplicando la regla de conteo a las trayectorias de DAT-02 | `configs/conteo_real.yaml` | pendiente (hoy tiene las secuencias antiguas) |
+| Alonso | Seguimiento por canal (ByteTrack) | `src/tracker/seguimiento.py` | hecha (un tracker por canal; ByteTrack o BoT-SORT según el perfil; video con `scripts/video_conteo.py`) |
+| Alonso | Conteo por canal, línea simple | `src/tracker/conteo.py`, `scripts/video_conteo.py` | hecha (`uv run tracker procesar` de punta a punta; falta probarlo en un video real contra la referencia) |
+| Alonso | Referencia de conteo por canal de val y test, aplicando la regla de conteo a las trayectorias de DAT-02 | `scripts/conteo_referencia.py`, `configs/conteo_real.yaml` | en curso (script listo; falta `--guardar` con DAT-02) |
 | Angelo | Interfaz: abrir video, dibujar tubos y zona, guardar JSON | `src/tracker/gui/` | pendiente (stub) |
 | Angelo | Pantalla de resultados con datos de ejemplo | `src/tracker/gui/`, `docs/ejemplo_formato/` | pendiente |
 | Angelo | Diagnóstico del seguimiento con YOLO11 | `docs/` (informe) | pendiente |
@@ -32,7 +32,7 @@ Estados: **hecha** · **en curso** · **pendiente**. Todo lo nuevo vive en `src/
 | Bastian | Error de conteo base vs variante y caso difícil | `src/tracker/comparar.py` (por crear), `docs/` | pendiente |
 | Bastian | Integración y entrega | todo | pendiente |
 | Alonso | Conteo con histéresis, filtro y herencia de estado | `src/tracker/conteo.py` | pendiente |
-| Alonso | Ajuste de ByteTrack y comparación de trackers (IDF1, ID switches contra DAT-02) | `src/tracker/seguimiento.py`, `configs/bytetrack.yaml` | pendiente |
+| Alonso | Ajuste de ByteTrack y comparación de trackers (IDF1, ID switches contra DAT-02) | `src/tracker/seguimiento.py`, `src/tracker/evaluar_seguimiento.py`, `configs/bytetrack.yaml`, `configs/botsort.yaml` | en curso (herramienta lista: `uv run tracker evaluar-seguimiento`; falta correrla con DAT-02 y ajustar) |
 | Angelo | Avance en vivo y conteo por canal | `src/tracker/gui/` | pendiente |
 | Angelo | Exportar al formato común, con errores claros | `src/tracker/formato.py`, `src/tracker/gui/` | pendiente |
 | Angelo | Prueba con el Validador y README de uso | `README.md` | pendiente |
