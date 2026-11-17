@@ -1,9 +1,10 @@
+# Datos (DAT-01, Lab 15 y DAT-02 en data/tracking/): privados, nunca se versionan
 data/
 .venv/
 .DS_Store
 __pycache__/
 *.pyc
-runs/
+.ruff_cache/
 _to_delete/
 /notebooks
 estadisticas_*.csv
@@ -18,6 +19,8 @@ output_*.mp4
 weights/*.pt
 !weights/best.pt
 # Generados por los scripts
+#   outputs/  videos, corridas de 'tracker procesar' y evaluacion_seguimiento/
+#   runs/     data.yaml de entrenamiento (preparar_split.py) y corridas de Ultralytics
 outputs/
 runs/
 logs/**/*.pt

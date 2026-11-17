@@ -4,7 +4,8 @@
 
 Es el contrato entre la GUI (Angelo), el seguimiento y el conteo (Alonso) y la exportación.
 'procesar_iter' entrega el avance cuadro a cuadro (para la barra de progreso y el video en vivo);
-'procesar' lo consume entero. Con solo_detectar=True corre solo el detector (hoy funciona).
+'procesar' lo consume entero. Con solo_detectar=True corre solo el detector (lo usa `tracker inferir`).
+El conteo depende del perfil: 'linea_simple' funciona; 'histeresis' es la variante de la semana 2.
 """
 from dataclasses import dataclass, field
 from pathlib import Path
