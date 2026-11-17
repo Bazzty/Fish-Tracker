@@ -48,6 +48,7 @@ class VideoCanvas(QWidget):
     channel_drawn = Signal(object)  # caja (x1, y1, x2, y2) en px del video
     channel_clicked = Signal(str)  # clic sobre un tubo existente
     channel_edited = Signal(str)  # se movió o redimensionó un tubo / línea
+    channel_moving = Signal(str)  # mientras se arrastra (para refrescar el panel en vivo)
     editing_changed = Signal(str)  # id del tubo en edición, o "" si todos están fijos
     drawing_changed = Signal(bool)
     message = Signal(str)
@@ -271,19 +272,10 @@ class VideoCanvas(QWidget):
         for c in reversed(self._channels):
             if self._inside(c, pos):
                 self.channel_clicked.emit(c.id)  # selecciona (y fija el que se editaba)
+                self.set_editing(c.id)  # un clic sobre un tubo abre su configuración
                 return
         if self._editing_id is not None:  # clic en zona vacía: se fija el tubo
             self.set_editing(None)
-
-    def mouseDoubleClickEvent(self, e) -> None:
-        """Doble clic sobre un tubo fijo: vuelve a ponerlo en edición."""
-        if self._image is None or self._drawing or e.button() != Qt.LeftButton:
-            return
-        for c in reversed(self._channels):
-            if self._inside(c, e.position()):
-                self.channel_clicked.emit(c.id)
-                self.set_editing(c.id)
-                return
 
     def mouseMoveEvent(self, e) -> None:
         pos = e.position()
@@ -296,6 +288,7 @@ class VideoCanvas(QWidget):
             return
         if self._drag is not None:
             self._apply_drag(self._to_video(pos, True))
+            self.channel_moving.emit(self._drag["ch"].id)
             self.update()
             return
         ch = self._active()
