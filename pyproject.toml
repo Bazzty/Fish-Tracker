@@ -10,7 +10,6 @@ dependencies = [
     "matplotlib",
     "numpy",
     "opencv-python",
-    "pandas",                 # src/analisis.py
     "pillow",
     "pyside6>=6.7",           # interfaz de escritorio (src/tracker/gui)
     "pyyaml",
