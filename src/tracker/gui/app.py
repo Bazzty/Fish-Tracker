@@ -1,8 +1,9 @@
 """Aplicación de escritorio (PySide6).  RESPONSABLE: Angelo.
 
-Misión 1: abrir un video y recorrerlo (reproducir / cuadro a cuadro), dibujar tubos (canales),
-ajustar su zona de conteo (líneas A y B), elegir cuáles se analizan y guardar/cargar el JSON
-del formato común (tracker.canales.guardar_canales / cargar_canales).
+Misión 1: abrir un video (reproducir / barra), dibujar tubos (canales), configurarlos (nombre, zona de
+conteo A/B, posición y tamaño), elegir cuáles se analizan y guardar/cargar el JSON del formato común
+(tracker.canales.guardar_canales / cargar_canales).
+Resultados: menú «Resultados» (conteo por canal y diagnóstico del seguimiento).
 
 Punto de entrada para `uv run tracker`: ejecutar().
 """
@@ -16,26 +17,37 @@ import cv2
 from PySide6.QtCore import QEvent, Qt, QTimer
 from PySide6.QtGui import QImage, QKeySequence, QShortcut
 from PySide6.QtWidgets import (
-    QApplication, QFileDialog, QHBoxLayout, QInputDialog, QLabel, QListWidget,
-    QListWidgetItem, QMainWindow, QMessageBox, QPushButton, QSlider, QVBoxLayout, QWidget,
+    QAbstractSpinBox, QApplication, QCheckBox, QFileDialog, QFormLayout, QGroupBox, QHBoxLayout,
+    QLabel, QLineEdit, QListWidget, QListWidgetItem, QMainWindow, QMessageBox, QPushButton, QSlider,
+    QSpinBox, QVBoxLayout, QWidget,
 )
 
 from tracker.canales import Canal, cargar_canales, guardar_canales
 
 from .canvas import VideoCanvas, color_for, num_de
+from .resultados import ResultadosWindow
+
+# Resultados de ejemplo del repo (formato común): <repo>/docs/ejemplo_formato
+EJEMPLO = Path(__file__).resolve().parents[3] / "docs" / "ejemplo_formato"
+MIN_GAP_PCT = 2  # separación mínima entre las líneas A y B (en %)
+
+
+def _en_campo_de_texto() -> bool:
+    return isinstance(QApplication.focusWidget(), (QLineEdit, QAbstractSpinBox))
 
 
 class MainWindow(QMainWindow):
     def __init__(self) -> None:
         super().__init__()
         self.setWindowTitle("Tracker - Contador de salmones")
-        self.resize(1200, 700)
+        self.resize(1250, 720)
 
         self.cap: cv2.VideoCapture | None = None
         self.video_path: Path | None = None
         self.frame_size: tuple[int, int] = (0, 0)
         self.channels: list[Canal] = []
         self._updating_list = False
+        self._cfg_updating = False
         self.current = 0
         self.fps = 25.0
         self.timer = QTimer(self)
@@ -45,57 +57,83 @@ class MainWindow(QMainWindow):
         self.canvas.channel_drawn.connect(self._on_channel_drawn)
         self.canvas.channel_clicked.connect(self._on_canvas_click)
         self.canvas.editing_changed.connect(self._on_editing_changed)
-        self.canvas.channel_edited.connect(lambda _id: self.statusBar().showMessage("Tubo modificado."))
+        self.canvas.channel_moving.connect(self._on_moving)
+        self.canvas.channel_edited.connect(self._on_moving)
         self.canvas.message.connect(lambda m: self.statusBar().showMessage(m))
         self.canvas.drawing_changed.connect(self._on_drawing_changed)
 
+        # ---- reproducción: solo Play y la barra ----
         self.slider = QSlider(Qt.Horizontal)
         self.slider.setEnabled(False)
         self.slider.valueChanged.connect(self._show_frame)
         self.frame_label = QLabel("Cuadro: -")
-
-        left = QVBoxLayout()
-        left.addWidget(self.canvas, 1)
-
-        self.btn_prev = QPushButton("◀ Cuadro")
-        self.btn_prev.setToolTip("Cuadro anterior (←)")
-        self.btn_prev.clicked.connect(lambda: self.step(-1))
         self.btn_play = QPushButton("▶ Reproducir")
         self.btn_play.setToolTip("Reproducir / pausar (Espacio)")
         self.btn_play.setMinimumWidth(110)
+        self.btn_play.setFocusPolicy(Qt.NoFocus)
+        self.btn_play.setEnabled(False)
         self.btn_play.clicked.connect(self.toggle_play)
-        self.btn_next = QPushButton("Cuadro ▶")
-        self.btn_next.setToolTip("Cuadro siguiente (→)")
-        self.btn_next.clicked.connect(lambda: self.step(1))
-        for b in (self.btn_prev, self.btn_play, self.btn_next):
-            b.setFocusPolicy(Qt.NoFocus)
-            b.setEnabled(False)
 
         row = QHBoxLayout()
-        row.addWidget(self.btn_prev)
         row.addWidget(self.btn_play)
-        row.addWidget(self.btn_next)
         row.addWidget(self.slider, 1)
         row.addWidget(self.frame_label)
+        left = QVBoxLayout()
+        left.addWidget(self.canvas, 1)
         left.addLayout(row)
 
-        QShortcut(QKeySequence(Qt.Key_Space), self, activated=self.toggle_play)
-        QShortcut(QKeySequence(Qt.Key_Left), self, activated=lambda: self.step(-1))
-        QShortcut(QKeySequence(Qt.Key_Right), self, activated=lambda: self.step(1))
-        QShortcut(QKeySequence(Qt.Key_Delete), self, activated=self.delete_channel)
+        QShortcut(QKeySequence(Qt.Key_Space), self, activated=self._atajo_play)
+        QShortcut(QKeySequence(Qt.Key_Delete), self, activated=self._atajo_eliminar)
         QShortcut(QKeySequence(Qt.Key_Return), self, activated=self.on_enter)
         QShortcut(QKeySequence(Qt.Key_Enter), self, activated=self.on_enter)
 
+        # ---- panel derecho ----
         self.btn_open = QPushButton("Abrir video…")
         self.btn_open.clicked.connect(self.open_video)
+        self.list = QListWidget()
+        self.list.itemChanged.connect(self._on_item_changed)
+        self.list.currentRowChanged.connect(self._on_row_changed)
+        self.list.installEventFilter(self)  # la lista conserva Espacio y flechas
+
+        # configuración del tubo seleccionado (se abre al hacer clic sobre un tubo)
+        self.ed_nombre = QLineEdit()
+        self.ed_nombre.editingFinished.connect(self._on_nombre)
+        self.chk_activo = QCheckBox("Analizar este tubo")
+        self.chk_activo.toggled.connect(self._on_activo)
+        self.sp_a = QSpinBox(); self.sp_b = QSpinBox()
+        for sp in (self.sp_a, self.sp_b):
+            sp.setRange(0, 100); sp.setSuffix(" %")
+        self.sp_x = QSpinBox(); self.sp_y = QSpinBox()
+        self.sp_w = QSpinBox(); self.sp_h = QSpinBox()
+        for sp in (self.sp_x, self.sp_y, self.sp_w, self.sp_h):
+            sp.setRange(0, 99999); sp.setSuffix(" px")
+        self.sp_a.valueChanged.connect(self._on_linea_a)
+        self.sp_b.valueChanged.connect(self._on_linea_b)
+        for sp in (self.sp_x, self.sp_y, self.sp_w, self.sp_h):
+            sp.valueChanged.connect(self._on_geom)
+        for sp in (self.sp_a, self.sp_b, self.sp_x, self.sp_y, self.sp_w, self.sp_h):
+            sp.setKeyboardTracking(False)  # aplica al terminar de escribir
+        form = QFormLayout()
+        form.addRow("Nombre", self.ed_nombre)
+        form.addRow(self.chk_activo)
+        form.addRow("Línea A (entrada)", self.sp_a)
+        form.addRow("Línea B (salida)", self.sp_b)
+        form.addRow("X", self.sp_x)
+        form.addRow("Y", self.sp_y)
+        form.addRow("Ancho", self.sp_w)
+        form.addRow("Alto", self.sp_h)
+        self.cfg = QGroupBox("Configuración del tubo")
+        self.cfg.setLayout(form)
+        self._cfg_widgets = [self.ed_nombre, self.chk_activo, self.sp_a, self.sp_b,
+                             self.sp_x, self.sp_y, self.sp_w, self.sp_h]
+
         self.btn_draw = QPushButton("Dibujar tubo (arrastrar)")
         self.btn_draw.setToolTip("Arrastra el mouse sobre el video")
         self.btn_draw.clicked.connect(self.start_drawing)
-        self.btn_edit = QPushButton("✎ Editar tubo (doble clic)")
-        self.btn_edit.clicked.connect(self.toggle_edit)
-        self.btn_edit.setEnabled(False)
-        self.btn_rename = QPushButton("Renombrar")
-        self.btn_rename.clicked.connect(self.rename_channel)
+        self.btn_done = QPushButton("✔ Listo (Enter)")
+        self.btn_done.setToolTip("Fija el tubo para no moverlo por accidente")
+        self.btn_done.clicked.connect(lambda: self.canvas.set_editing(None))
+        self.btn_done.setEnabled(False)
         self.btn_delete = QPushButton("Eliminar tubo (Supr)")
         self.btn_delete.clicked.connect(self.delete_channel)
         self.btn_save = QPushButton("Guardar canales…")
@@ -103,29 +141,19 @@ class MainWindow(QMainWindow):
         self.btn_load = QPushButton("Cargar canales…")
         self.btn_load.clicked.connect(self.load)
 
-        self.list = QListWidget()
-        self.list.itemChanged.connect(self._on_item_changed)
-        self.list.currentRowChanged.connect(self._on_row_changed)
-        self.list.installEventFilter(self)  # la lista conserva Espacio y flechas
-
-        hint = QLabel("Líneas A y B: zona de conteo (los peces avanzan de arriba hacia abajo). "
-                      "En modo edición, arrastra los círculos amarillos para moverlas.")
-        hint.setWordWrap(True)
-
         right = QVBoxLayout()
         right.addWidget(self.btn_open)
-        right.addWidget(QLabel("Tubos (✔ = se analiza). Clic en uno para elegirlo:"))
+        right.addWidget(QLabel("Tubos (✔ = se analiza). Clic en un tubo del video para configurarlo:"))
         right.addWidget(self.list, 1)
-        right.addWidget(hint)
+        right.addWidget(self.cfg)
         right.addWidget(self.btn_draw)
-        right.addWidget(self.btn_edit)
-        right.addWidget(self.btn_rename)
+        right.addWidget(self.btn_done)
         right.addWidget(self.btn_delete)
         right.addWidget(self.btn_save)
         right.addWidget(self.btn_load)
         side = QWidget()
         side.setLayout(right)
-        side.setFixedWidth(260)
+        side.setFixedWidth(290)
 
         root = QHBoxLayout()
         root.addLayout(left, 1)
@@ -133,6 +161,12 @@ class MainWindow(QMainWindow):
         central = QWidget()
         central.setLayout(root)
         self.setCentralWidget(central)
+
+        menu = self.menuBar().addMenu("Resultados")
+        menu.addAction("Abrir resultados…").triggered.connect(self.abrir_resultados)
+        menu.addAction("Resultados de ejemplo").triggered.connect(self.abrir_ejemplo)
+        self.res_win = None
+        self._load_cfg()
         self.statusBar().showMessage("Abre un video para comenzar.")
 
     def eventFilter(self, obj, event) -> bool:
@@ -187,6 +221,8 @@ class MainWindow(QMainWindow):
         self.fps = fps if fps and fps > 1 else 25.0
         h, w = frame.shape[:2]
         self.frame_size = (w, h)
+        self.sp_x.setRange(0, w); self.sp_y.setRange(0, h)
+        self.sp_w.setRange(5, w); self.sp_h.setRange(5, h)
         n = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
         self.canvas.set_editing(None)
         self.channels = []
@@ -196,8 +232,7 @@ class MainWindow(QMainWindow):
         self.slider.setValue(0)
         self.slider.blockSignals(False)
         self.slider.setEnabled(n > 1)
-        for b in (self.btn_prev, self.btn_play, self.btn_next):
-            b.setEnabled(n > 1)
+        self.btn_play.setEnabled(n > 1)
         self.current = 0
         self._display(frame, 0, n)
         self.statusBar().showMessage(f"{self.video_path.name}: {w}x{h}, {n} cuadros.")
@@ -251,12 +286,13 @@ class MainWindow(QMainWindow):
         if self.current >= self.slider.maximum():
             self.pause()
 
-    def step(self, delta: int) -> None:
-        """Avanza o retrocede cuadro por cuadro (pausa la reproducción)."""
-        if self.cap is None:
-            return
-        self.pause()
-        self.slider.setValue(max(0, min(self.slider.maximum(), self.current + delta)))
+    def _atajo_play(self) -> None:
+        if not _en_campo_de_texto():
+            self.toggle_play()
+
+    def _atajo_eliminar(self) -> None:
+        if not _en_campo_de_texto():
+            self.delete_channel()
 
     def start_drawing(self) -> None:
         self.pause()
@@ -265,7 +301,6 @@ class MainWindow(QMainWindow):
     # ---- canales ----
     def _on_drawing_changed(self, drawing: bool) -> None:
         self.btn_draw.setEnabled(not drawing)
-        self._update_edit_button()
 
     def _on_channel_drawn(self, caja: tuple) -> None:
         n = max((num_de(c.id) for c in self.channels), default=0) + 1
@@ -273,8 +308,8 @@ class MainWindow(QMainWindow):
         self._refresh_list(keep_row=len(self.channels) - 1)
         self.canvas.set_editing(f"canal_{n}")  # el tubo nuevo queda editable
         self.statusBar().showMessage(
-            f"Tubo {n} creado. Ajústalo con los cuadritos blancos, mueve las líneas A y B con los círculos "
-            "amarillos. Cuando esté listo, presiona Enter o haz clic fuera para fijarlo."
+            f"Tubo {n} creado. Ajústalo con los cuadritos blancos o con el panel; mueve las líneas A y B con los "
+            "círculos amarillos. Cuando esté listo, Enter o clic fuera."
         )
 
     def _on_canvas_click(self, channel_id: str) -> None:
@@ -305,6 +340,7 @@ class MainWindow(QMainWindow):
         self.list.setCurrentRow(row)
         self.channels[row].activo = item.checkState() == Qt.Checked
         self.canvas.set_channels(self.channels)
+        self._load_cfg()
 
     def _on_row_changed(self, _row: int) -> None:
         if not self._updating_list:
@@ -320,47 +356,27 @@ class MainWindow(QMainWindow):
         self.canvas.set_active(active)
         if self.canvas.editing_id is not None and self.canvas.editing_id != active:
             self.canvas.set_editing(None)  # al elegir otro tubo, el anterior se fija
-        self._update_edit_button()
-
-    def _update_edit_button(self) -> None:
-        ch = self._current_channel()
-        self.btn_edit.setEnabled(ch is not None and not self.canvas.is_drawing)
-        if ch is not None and self.canvas.editing_id == ch.id:
-            self.btn_edit.setText("✔ Fijar tubo (Enter)")
-        else:
-            self.btn_edit.setText("✎ Editar tubo (doble clic)")
-
-    def toggle_edit(self) -> None:
-        ch = self._current_channel()
-        if ch is not None:
-            self.canvas.set_editing(None if self.canvas.editing_id == ch.id else ch.id)
+        self._load_cfg()
+        self.btn_done.setEnabled(self.canvas.editing_id is not None)
 
     def on_enter(self) -> None:
-        if not self.canvas.is_drawing and self.canvas.editing_id is not None:
+        if _en_campo_de_texto():
+            QApplication.focusWidget().clearFocus()  # confirma el valor que se estaba escribiendo
+        elif not self.canvas.is_drawing and self.canvas.editing_id is not None:
             self.canvas.set_editing(None)
 
     def _on_editing_changed(self, channel_id: str) -> None:
-        self._update_edit_button()
+        self.btn_done.setEnabled(channel_id != "")
         if channel_id == "":
-            self.statusBar().showMessage("Tubo fijado. Doble clic sobre él (o «Editar tubo») para modificarlo de nuevo.")
+            self.statusBar().showMessage("Tubo fijado. Haz clic sobre él para configurarlo de nuevo.")
         else:
-            self.statusBar().showMessage("Editando: arrastra los cuadritos blancos, las líneas A/B o mueve el tubo. "
-                                         "Enter o clic fuera para fijar.")
-
-    def rename_channel(self) -> None:
-        ch = self._current_channel()
-        if ch is None:
-            self.statusBar().showMessage("Selecciona un tubo de la lista.")
-            return
-        name, ok = QInputDialog.getText(self, "Renombrar tubo", "Nombre:", text=ch.nombre)
-        if ok and name.strip():
-            ch.nombre = name.strip()
-            self._refresh_list(keep_row=self.list.currentRow())
+            self.statusBar().showMessage("Configurando el tubo: arrastra los cuadritos blancos, las líneas A/B, "
+                                         "o usa el panel. Enter o clic fuera para fijar.")
 
     def delete_channel(self) -> None:
         row = self.list.currentRow()
         if row < 0:
-            self.statusBar().showMessage("Haz clic en el nombre de un tubo de la lista para elegirlo y luego Eliminar.")
+            self.statusBar().showMessage("Haz clic en un tubo (en el video o en la lista) y luego Eliminar.")
             return
         name = self.channels[row].nombre
         if QMessageBox.question(self, "Eliminar tubo", f"¿Eliminar '{name}'?") != QMessageBox.Yes:
@@ -368,6 +384,92 @@ class MainWindow(QMainWindow):
         del self.channels[row]
         self._refresh_list(keep_row=row)
         self.statusBar().showMessage(f"'{name}' eliminado.")
+
+    # ---- panel de configuración del tubo ----
+    def _load_cfg(self) -> None:
+        ch = self._current_channel()
+        self._cfg_updating = True
+        for w in self._cfg_widgets:
+            w.setEnabled(ch is not None)
+        if ch is None:
+            self.ed_nombre.clear()
+            self.chk_activo.setChecked(False)
+        else:
+            x1, y1, x2, y2 = ch.caja
+            self.ed_nombre.setText(ch.nombre)
+            self.chk_activo.setChecked(ch.activo)
+            self.sp_a.setValue(round(ch.linea_a * 100))
+            self.sp_b.setValue(round(ch.linea_b * 100))
+            self.sp_x.setValue(round(x1))
+            self.sp_y.setValue(round(y1))
+            self.sp_w.setValue(round(x2 - x1))
+            self.sp_h.setValue(round(y2 - y1))
+        self._cfg_updating = False
+
+    def _on_moving(self, channel_id: str) -> None:
+        ch = self._current_channel()
+        if ch is not None and ch.id == channel_id:
+            self._load_cfg()
+
+    def _on_nombre(self) -> None:
+        ch = self._current_channel()
+        if self._cfg_updating or ch is None:
+            return
+        nombre = self.ed_nombre.text().strip()
+        if not nombre:
+            self._load_cfg()
+            return
+        ch.nombre = nombre
+        self._updating_list = True
+        self.list.item(self.list.currentRow()).setText(nombre)
+        self._updating_list = False
+        self.canvas.update()
+
+    def _on_activo(self, checked: bool) -> None:
+        ch = self._current_channel()
+        if self._cfg_updating or ch is None:
+            return
+        ch.activo = checked
+        self._updating_list = True
+        self.list.item(self.list.currentRow()).setCheckState(Qt.Checked if checked else Qt.Unchecked)
+        self._updating_list = False
+        self.canvas.update()
+
+    def _on_linea_a(self, v: int) -> None:
+        ch = self._current_channel()
+        if self._cfg_updating or ch is None:
+            return
+        if v > round(ch.linea_b * 100) - MIN_GAP_PCT:
+            self.statusBar().showMessage("La línea A debe quedar arriba de la B.")
+        else:
+            ch.linea_a = v / 100
+        self._load_cfg()
+        self.canvas.update()
+
+    def _on_linea_b(self, v: int) -> None:
+        ch = self._current_channel()
+        if self._cfg_updating or ch is None:
+            return
+        if v < round(ch.linea_a * 100) + MIN_GAP_PCT:
+            self.statusBar().showMessage("La línea B debe quedar debajo de la A.")
+        else:
+            ch.linea_b = v / 100
+        self._load_cfg()
+        self.canvas.update()
+
+    def _on_geom(self) -> None:
+        ch = self._current_channel()
+        if self._cfg_updating or ch is None:
+            return
+        iw, ih = self.frame_size
+        x, y, w, h = self.sp_x.value(), self.sp_y.value(), self.sp_w.value(), self.sp_h.value()
+        x2, y2 = min(x + w, iw), min(y + h, ih)
+        if x2 - x < 5 or y2 - y < 5:
+            self.statusBar().showMessage("El tubo quedaría fuera del video o demasiado pequeño.")
+        else:
+            ch.caja = (float(x), float(y), float(x2), float(y2))
+        self._load_cfg()
+        self.canvas.update()
 
     # ---- guardar / cargar (formato común: tracker.canales) ----
     def save(self) -> None:
@@ -430,6 +532,31 @@ class MainWindow(QMainWindow):
         self.channels = channels
         self._refresh_list()
         self.statusBar().showMessage(f"Cargados {len(channels)} tubos (todos fijos).")
+        return True
+
+    # ---- resultados (conteo por canal y diagnóstico del seguimiento) ----
+    def abrir_resultados(self) -> None:
+        inicio = str(EJEMPLO.parent) if EJEMPLO.parent.is_dir() else ""
+        carpeta = QFileDialog.getExistingDirectory(self, "Carpeta de resultados (formato común)", inicio)
+        if carpeta:
+            self.mostrar_resultados(carpeta)
+
+    def abrir_ejemplo(self) -> None:
+        if not EJEMPLO.is_dir():
+            QMessageBox.warning(self, "Sin ejemplo", f"No existe la carpeta de ejemplo:\n{EJEMPLO}")
+            return
+        self.mostrar_resultados(str(EJEMPLO))
+
+    def mostrar_resultados(self, carpeta: str) -> bool:
+        from tracker.formato import leer  # lee y valida la carpeta del formato común
+
+        try:
+            res = leer(carpeta)
+        except (ValueError, OSError, KeyError, TypeError) as e:
+            QMessageBox.critical(self, "Resultados inválidos", f"No se pudo leer la carpeta:\n{carpeta}\n\n{e}")
+            return False
+        self.res_win = ResultadosWindow(res, carpeta, self)
+        self.res_win.show()
         return True
 
 
