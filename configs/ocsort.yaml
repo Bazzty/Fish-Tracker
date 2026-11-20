@@ -1,0 +1,12 @@
+# OC-SORT (librería 'trackers' de Roboflow), valores por defecto fijados aquí salvo high_conf_det_threshold.
+# Corrige la deriva del filtro de Kalman cuando un pez se pierde unos cuadros (bueno ante oclusiones).
+tracker_type: ocsort
+lost_track_buffer: 30             # cuadros que se conserva un ID perdido (con frame_rate 30 = 30 cuadros, igual que ByteTrack)
+frame_rate: 30                    # la librería escala lost_track_buffer por frame_rate / 30
+minimum_consecutive_frames: 3     # cuadros seguidos para confirmar un ID nuevo
+minimum_iou_threshold: 0.3        # IoU mínimo para asociar una caja con un ID
+direction_consistency_weight: 0.2 # peso de la dirección del movimiento al asociar
+high_conf_det_threshold: 0.25     # OC-SORT IGNORA las cajas con menos confianza (no tiene segunda asociación).
+                                  # 0.25 = track_high_thresh de ByteTrack; el valor de la librería (0.6) descartaba
+                                  # muchas detecciones del detector, que entrega desde 0.10
+delta_t: 3                        # cuadros hacia atrás para estimar la dirección

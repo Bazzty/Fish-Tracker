@@ -1,0 +1,15 @@
+# BoT-SORT con ReID: lo mismo que botsort.yaml, pero además compara la apariencia de cada pez.
+# Para describir cada recorte usa los pesos del detector del perfil (model: detector), así no descarga
+# nada y el modelo ya "conoce" salmones. Necesita la imagen de cada cuadro. Cámara fija: sin compensación.
+tracker_type: botsort
+track_high_thresh: 0.25
+track_low_thresh: 0.1
+new_track_thresh: 0.25
+track_buffer: 30
+match_thresh: 0.8
+fuse_score: True
+gmc_method: none
+with_reid: True
+model: detector             # 'detector' = perfil.detector.pesos; también acepta la ruta a otro .pt
+proximity_thresh: 0.5       # solo usa la apariencia si la caja y el ID se solapan con IoU >= 0.5
+appearance_thresh: 0.8      # similitud de apariencia mínima (0-1) para asociar por apariencia

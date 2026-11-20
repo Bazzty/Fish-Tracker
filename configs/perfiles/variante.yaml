@@ -6,7 +6,7 @@ detector:
   conf: 0.10
   iou: 0.7
 tracker:
-  tipo: bytetrack                  # se cambia por el mejor tras la comparación (BoT-SORT, OC-SORT)
+  tipo: bytetrack                  # se cambia por el mejor tras la comparación (botsort, ocsort, deepsort)
   config: configs/bytetrack.yaml   # con track_buffer y umbrales ajustados
   match_thresh: 0.8
 conteo:

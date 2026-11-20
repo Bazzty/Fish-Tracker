@@ -13,12 +13,6 @@ Todo se corre desde la raíz del repositorio. Los datos no se versionan: ver [Da
 
 **1. Instalar.** FFmpeg viene incluido (`imageio-ffmpeg`): los videos salen en H.264 sin instalar nada más.
 
-### Cómo ejecutarlo
-
-Todo se corre desde la raíz del repositorio. Los datos no se versionan: ver [Datos de la Solemne 3](#datos-de-la-solemne-3).
-
-**1. Instalar.** FFmpeg viene incluido (`imageio-ffmpeg`): los videos salen en H.264 sin instalar nada más.
-
 ```powershell
 uv sync
 ```
@@ -38,17 +32,20 @@ uv run python scripts/video_conteo.py outputs/seq_00015 --video outputs/videos/s
 uv run python scripts/conteo_referencia.py --seq seq_00015 --canales configs/canales_cuadro_completo.json --comparar outputs/seq_00015
 ```
 
+- `procesar` usa el tracker del perfil (`base` = ByteTrack). Para otro: `--tracker configs/ocsort.yaml` (también `botsort.yaml`, `botsort_reid.yaml` o `deepsort.yaml`).
 - `--canales` es el JSON con los tubos (`src/tracker/canales.py`): por cada tubo, su rectángulo `caja` en píxeles y la línea de conteo `linea_a` como fracción de su alto. `configs/canales_cuadro_completo.json` es un solo tubo del tamaño del cuadro (1456 × 1088) con la línea a la mitad; la interfaz de Angelo guardará los tubos reales en este mismo formato.
 - Regla de conteo (línea simple): un pez `(canal, id)` suma **una sola vez**, cuando su centro pasa de estar sobre la línea A del tubo a estar en ella o bajo ella. Subir no cuenta, ni aparecer ya bajo la línea ([formato común](docs/formato_comun.md#regla-de-conteo)).
 - `procesar` deja en `outputs/seq_00015/` los 5 archivos del formato común; `video_conteo.py` agrega `anotado.mp4` (tubos, línea A en amarillo, cada pez con su ID y su ruta, en verde cuando ya contó).
 - `conteo_referencia.py` aplica la misma regla a las trayectorias etiquetadas (el conteo correcto) y con `--comparar` muestra tracker, referencia y error por tubo. Usar **el mismo** JSON de tubos en los dos comandos.
 
-**4. Evaluar el seguimiento contra DAT-02.** Corre el detector una vez por secuencia y cada tracker sobre esas detecciones; escribe `outputs/evaluacion_seguimiento/<perfil>/metricas.csv` (IDF1, ID switches, MOTA, cajas de más y de menos, peces del GT y del tracker) y las trayectorias de cada tracker. Con `--oraculo` usa las cajas del GT en vez del detector, para separar fallas del tracker de fallas del detector.
+**4. Evaluar el seguimiento contra DAT-02.** Corre el detector una vez por secuencia y cada tracker sobre esas detecciones; escribe `outputs/evaluacion_seguimiento/<perfil>/metricas.csv` y `metricas.json` (el mismo contenido para leerlo desde código, con fecha, perfil, pesos y secuencias de la corrida; IDF1, ID switches, MOTA, cajas de más y de menos, peces del GT y del tracker y **el conteo**: lo que cuenta cada tracker con la línea simple, la referencia de DAT-02 y el error absoluto, que es la comparación principal del plan) y las trayectorias de cada tracker. Con `--oraculo` usa las cajas del GT en vez del detector, para separar fallas del tracker de fallas del detector.
+
+Trackers disponibles (cada uno con su YAML en `configs/`): **ByteTrack** y **BoT-SORT** (Ultralytics), **BoT-SORT con ReID** (`botsort_reid.yaml`), **OC-SORT** (librería `trackers`, Python ≥ 3.11) y **DeepSORT** (`deep-sort-realtime`). Los dos que miran la apariencia de cada pez necesitan la imagen y son más lentos: DeepSORT usa una red MobileNet y BoT-SORT con ReID usa los pesos del propio detector. Con `--oraculo` reciben las cajas del GT pero igual miran la imagen real.
 
 ```powershell
-uv run tracker evaluar-seguimiento --conjunto val --trackers configs/bytetrack.yaml configs/botsort.yaml
-uv run tracker evaluar-seguimiento --conjunto val --trackers configs/bytetrack.yaml configs/botsort.yaml --oraculo
-uv run python scripts/video_seguimiento.py seq_00015 --tracker botsort      # caja, ID y ruta de cada pez
+uv run tracker evaluar-seguimiento --conjunto val --trackers configs/bytetrack.yaml configs/botsort.yaml configs/botsort_reid.yaml configs/ocsort.yaml configs/deepsort.yaml
+uv run tracker evaluar-seguimiento --conjunto val --trackers configs/bytetrack.yaml configs/botsort.yaml configs/botsort_reid.yaml configs/ocsort.yaml configs/deepsort.yaml --oraculo
+uv run python scripts/video_seguimiento.py seq_00015 --tracker ocsort       # caja, ID y ruta de cada pez
 ```
 
 **5. Referencia de conteo de val y test.** Escribe en `configs/conteo_real.yaml` el conteo de cada secuencia según DAT-02 (un tubo del tamaño del cuadro, línea A en `conteo.linea` de `config.yaml`). Reemplaza el conteo manual del Lab 15.
@@ -85,7 +82,7 @@ data/                               # no se versiona
 | Contrato `procesar(video, canales, perfil) -> Resultados` | `src/tracker/pipeline.py` |
 | Canal (tubo) y su línea de conteo, en JSON | `src/tracker/canales.py`, `configs/canales_cuadro_completo.json` |
 | Detector por cuadro (solo cambian los pesos) | `src/tracker/detector.py` |
-| Seguimiento por canal: un tracker por tubo, ByteTrack o BoT-SORT | `src/tracker/seguimiento.py`, `configs/bytetrack.yaml`, `configs/botsort.yaml` |
+| Seguimiento por canal: un tracker por tubo (ByteTrack, BoT-SORT con o sin ReID, OC-SORT o DeepSORT) | `src/tracker/seguimiento.py`, `configs/bytetrack.yaml`, `botsort.yaml`, `botsort_reid.yaml`, `ocsort.yaml`, `deepsort.yaml` |
 | Conteo: línea simple (lista) e histéresis (semana 2) | `src/tracker/conteo.py` |
 | Evaluación del seguimiento contra DAT-02 | `src/tracker/evaluar_seguimiento.py` |
 | Exportar, leer y validar el formato común | `src/tracker/formato.py` |

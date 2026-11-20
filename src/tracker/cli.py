@@ -2,9 +2,9 @@
 
     uv run tracker                                   # abre la aplicación
     uv run tracker inferir --video v.mp4 --salida outputs/v        # solo detector: detecciones guardadas
-    uv run tracker procesar --video v.mp4 --canales c.json --salida outputs/v [--perfil base]
+    uv run tracker procesar --video v.mp4 --canales c.json --salida outputs/v [--perfil base] [--tracker configs/ocsort.yaml]
     uv run tracker validar outputs/v                 # comprueba una carpeta contra el formato común
-    uv run tracker evaluar-seguimiento --conjunto val [--trackers configs/bytetrack.yaml configs/botsort.yaml] [--oraculo]
+    uv run tracker evaluar-seguimiento --conjunto val [--trackers configs/bytetrack.yaml configs/ocsort.yaml ...] [--oraculo]
 """
 import argparse
 import sys
@@ -12,7 +12,8 @@ from pathlib import Path
 
 from tracker import formato
 from tracker.canales import Canal, cargar_canales
-from tracker.pipeline import info_video, procesar
+from tracker.pipeline import cargar_perfil, info_video, procesar
+from tracker.seguimiento import con_tracker
 
 
 def _avance(av) -> None:
@@ -48,7 +49,7 @@ def _evaluar_seguimiento(a) -> int:
     for r in filas:
         if r["secuencia"] == "TOTAL":
             print(f"  {r['tracker']:10s} IDF1 {r['IDF1']:.1%} | IDSW {r['IDSW']} | MOTA {r['MOTA']:.1%} | "
-                  f"peces GT {r['peces_gt']} | IDs {r['ids_tracker']}")
+                  f"conteo {r['conteo_tracker']} vs referencia {r['conteo_referencia']} (error {r['error_conteo']})")
     print(f"  Salidas : {salida}")
     print("=" * 60)
     return 0
@@ -66,12 +67,13 @@ def main(argv: list[str] | None = None) -> int:
     pro.add_argument("--canales", required=True, help="JSON guardado por la interfaz")
     pro.add_argument("--salida", required=True)
     pro.add_argument("--perfil", default="base")
+    pro.add_argument("--tracker", help="YAML de otro tracker (bytetrack, botsort, ocsort, deepsort); reemplaza el del perfil")
     val = sub.add_parser("validar", help="valida una carpeta del formato común")
     val.add_argument("carpeta")
     evs = sub.add_parser("evaluar-seguimiento", help="IDF1, ID switches y MOTA contra las trayectorias de DAT-02")
     evs.add_argument("--conjunto", default="val")
     evs.add_argument("--seq", nargs="+", help="secuencias concretas (en vez de --conjunto)")
-    evs.add_argument("--perfil", default="base")
+    evs.add_argument("--perfil", default="base", help="detector; el tracker lo eligen --trackers")
     evs.add_argument("--trackers", nargs="+", help="YAMLs a comparar; por defecto el del perfil")
     evs.add_argument("--oraculo", action="store_true", help="cajas del GT en vez del detector")
     a = p.parse_args(argv)
@@ -88,7 +90,10 @@ def main(argv: list[str] | None = None) -> int:
             todo = Canal("canal_1", (0, 0, info["ancho"], info["alto"]), "cuadro completo")
             return _ejecutar(a.video, [todo], a.perfil, a.salida, solo_detectar=True)
         if a.orden == "procesar":
-            return _ejecutar(a.video, cargar_canales(a.canales), a.perfil, a.salida, solo_detectar=False)
+            perfil = cargar_perfil(a.perfil)
+            if a.tracker:
+                perfil = con_tracker(perfil, a.tracker)
+            return _ejecutar(a.video, cargar_canales(a.canales), perfil, a.salida, solo_detectar=False)
     except (ValueError, FileNotFoundError, NotImplementedError) as e:
         print(f"[ERROR] {e}", file=sys.stderr)
         return 1

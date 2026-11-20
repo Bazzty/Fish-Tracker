@@ -27,6 +27,9 @@ uv run tracker inferir --video VIDEO.mp4 --salida outputs/inferencia
 # Flujo completo: detectar, seguir y contar
 uv run tracker procesar --video VIDEO.mp4 --canales CANALES.json --salida outputs/resultado
 
+# Lo mismo con otro tracker (bytetrack, botsort, botsort_reid, ocsort o deepsort)
+uv run tracker procesar --video VIDEO.mp4 --canales CANALES.json --salida outputs/resultado --tracker configs/ocsort.yaml
+
 # Revisar que la salida cumpla el formato
 uv run tracker validar outputs/resultado
 ```
@@ -36,10 +39,10 @@ uv run tracker validar outputs/resultado
 - Si el video o el JSON no existen, el comando termina con `[ERROR] ...` y no deja archivos a medias.
 
 ```bash
-# Comparar ByteTrack y BoT-SORT contra DAT-02 📂
-uv run tracker evaluar-seguimiento --conjunto val --trackers configs/bytetrack.yaml configs/botsort.yaml
+# Comparar ByteTrack, BoT-SORT (con y sin ReID), OC-SORT y DeepSORT contra DAT-02 📂
+uv run tracker evaluar-seguimiento --conjunto val --trackers configs/bytetrack.yaml configs/botsort.yaml configs/botsort_reid.yaml configs/ocsort.yaml configs/deepsort.yaml
 # Con las cajas etiquetadas en vez del detector, para separar fallas del tracker de fallas del detector
-uv run tracker evaluar-seguimiento --conjunto val --trackers configs/bytetrack.yaml configs/botsort.yaml --oraculo
+uv run tracker evaluar-seguimiento --conjunto val --trackers configs/bytetrack.yaml configs/botsort.yaml configs/botsort_reid.yaml configs/ocsort.yaml configs/deepsort.yaml --oraculo
 ```
 
 ## 3. Scripts (`scripts/`)
@@ -66,7 +69,7 @@ uv run python scripts/conteo_referencia.py --seq seq_00015 --canales configs/can
 uv run python scripts/conteo_referencia.py
 uv run python scripts/conteo_referencia.py --guardar
 
-# Video del seguimiento (bytetrack o botsort) 📂
+# Video del seguimiento (bytetrack, botsort, botsort_reid, ocsort o deepsort) 📂
 uv run python scripts/video_seguimiento.py seq_00015 --tracker botsort
 
 # Preparar el split de entrenamiento 📂

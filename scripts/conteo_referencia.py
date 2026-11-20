@@ -1,7 +1,7 @@
 """Conteo de referencia desde DAT-02: la regla de conteo de la línea base aplicada a las trayectorias etiquetadas.
 
 Es el "tracker perfecto" contra el que se compara el conteo del sistema (docs/formato_comun.md).
-Usa el mismo contador que procesar (tracker.conteo.ContadorLinea). Sin --canales cuenta en un solo tubo
+Usa el mismo contador que procesar y evaluar-seguimiento (tracker.conteo.contar_trayectorias). Sin --canales cuenta en un solo tubo
 del tamaño del cuadro, con la línea A en conteo.linea de config.yaml.
 
 Uso:
@@ -20,27 +20,17 @@ import cv2  # noqa: E402
 import yaml  # noqa: E402
 
 from comun import cargar_config, ruta_abs, secuencias  # noqa: E402
-from tracker.canales import Canal, canal_de, cargar_canales  # noqa: E402
-from tracker.conteo import ContadorLinea  # noqa: E402
-from tracker.evaluar_seguimiento import VACIO, con_gt, cuadros_seq, dir_gt, leer_mot  # noqa: E402
+from tracker.canales import Canal, cargar_canales  # noqa: E402
+from tracker.conteo import canal_cuadro, contar_trayectorias  # noqa: E402
+from tracker.evaluar_seguimiento import con_gt, cuadros_seq, dir_gt, leer_mot  # noqa: E402
 
 
 def referencia(cfg: dict, seq: str, canales: list[Canal] | None) -> dict[str, int]:
     gt, cuadros = leer_mot(dir_gt(cfg, seq) / "gt" / "gt.txt"), cuadros_seq(cfg, seq)
     if canales is None:
         alto, ancho = cv2.imread(str(cuadros[0][1])).shape[:2]
-        linea = float(cfg["conteo"]["linea"])
-        canales = [Canal("canal_1", (0, 0, ancho, alto), "cuadro completo", linea, min(linea + 0.1, 1.0))]
-    activos = [c for c in canales if c.activo]
-    contador = ContadorLinea(activos, float(cfg["conteo"]["fps_cuadros"]))
-    for f, _ in cuadros:
-        tray = []
-        for i, x, y, w, h in gt.get(f, VACIO):
-            c = canal_de(activos, x + w / 2, y + h / 2)
-            if c:
-                tray.append(dict(canal=c.id, id=int(i), cy=y + h / 2))
-        contador.actualizar(f, tray)
-    return contador.conteos()
+        canales = [canal_cuadro(cfg, ancho, alto)]
+    return contar_trayectorias(gt, [f for f, _ in cuadros], canales, float(cfg["conteo"]["fps_cuadros"]))
 
 
 p = argparse.ArgumentParser()
