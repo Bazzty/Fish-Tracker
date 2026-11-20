@@ -3,7 +3,7 @@
 Comprueba el split (ninguna secuencia en dos conjuntos; val y test solo con DAT-01), escribe
     runs/data_dat01.yaml          train = DAT-01          (versión A)
     runs/data_lab15_dat01.yaml    train = Lab 15 + DAT-01 (versión B)
-con el mismo val y test, y la tabla docs/tablas/cuadros_por_split.md con secuencias, cuadros,
+con el mismo val y test, y la tabla resultados/tablas/cuadros_por_split.md con secuencias, cuadros,
 cuadros con peces y cajas de cada conjunto. Se usan todos los cuadros (también los sin peces).
 No hay azar: con el mismo split.yaml y los mismos datos sale siempre lo mismo.
 
@@ -71,7 +71,7 @@ tabla = ["# Cuadros por split", "",
          "|---|---|---|---|---|---|---|---|"]
 tabla += [f"| {v} | {c} | {r['secuencias']} | {r['cuadros']} | {pct(v, r, 'cuadros')} | {r['con_peces']} | "
           f"{r['cajas']} | {pct(v, r, 'cajas')} |" for v, c, r in filas]
-destino = RAIZ / "docs" / "tablas" / "cuadros_por_split.md"
+destino = RAIZ / "resultados" / "tablas" / "cuadros_por_split.md"
 destino.write_text("\n".join(tabla) + "\n", encoding="utf-8")
 
 print("=" * 72)

@@ -11,7 +11,7 @@ rutas:
   tracking: data/tracking             # DAT-02: <seq>[_Final]/gt/gt.txt + frames.txt (no se versiona)
   split: configs/split.yaml           # partición por secuencia completa
   conteo_real: configs/conteo_real.yaml
-  logs: logs                          # corridas de la grilla, tablas y criterio
+  resultados: resultados              # entrenamientos, evaluaciones y tablas
   pesos: weights                      # weights/best.pt = configuración elegida
   salidas: outputs                    # videos anotados y eventos de conteo (no se versiona)
 

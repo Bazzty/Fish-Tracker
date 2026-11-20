@@ -1,14 +1,15 @@
 """Entrena UNA configuración del detector YOLO11 con los parámetros fijos de configs/config.yaml.
 
-La grilla completa la ejecuta src/grilla.py, que llama a esta función 8 veces.
-
 Uso:
-    uv run python src/entrenar.py --modelo yolo11n.pt --imgsz 640 --lr0 0.01 --nombre prueba --epocas 1
+    uv run python src/entrenamiento/entrenar.py --modelo yolo11n.pt --imgsz 640 --lr0 0.01 --nombre prueba --epocas 1
 """
 import argparse
+import sys
 from pathlib import Path
 
-from comun import cargar_config, dispositivo, escribir_data_yaml, fijar_semilla, ir_a_raiz, ruta_abs
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))  # src/, donde está comun.py
+
+from comun import cargar_config, dispositivo, escribir_data_yaml, fijar_semilla, ir_a_raiz, ruta_abs  # noqa: E402
 
 
 def entrenar(cfg: dict, modelo: str, imgsz: int, lr0: float, nombre: str, epocas: int | None = None) -> dict:
@@ -37,7 +38,7 @@ def entrenar(cfg: dict, modelo: str, imgsz: int, lr0: float, nombre: str, epocas
         seed=semilla,
         deterministic=True,
         device=disp,
-        project=str(ruta_abs(cfg["rutas"]["logs"])),
+        project=str(ruta_abs(cfg["rutas"]["resultados"])),
         name=nombre,
         exist_ok=True,
         plots=False,  # los gráficos de Ultralytics incluyen cuadros del dataset (datos privados)

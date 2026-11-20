@@ -11,8 +11,8 @@ Estados: **hecha** · **en curso** · **pendiente**. Todo lo nuevo vive en `src/
 | Bastian | Contrato `procesar(video, canales)` | `src/tracker/pipeline.py`, `src/tracker/canales.py`, `configs/perfiles/` | hecha |
 | Bastian | Pesos YOLO11 y script de inferencia por cuadro | `src/tracker/detector.py`, `uv run tracker inferir`, `scripts/secuencia_a_video.py` | hecha (probado en `seq_00015`) |
 | Bastian | Formato común con archivo de ejemplo | `docs/formato_comun.md`, `src/tracker/formato.py`, `docs/ejemplo_formato/` | en curso (falta que lo acepte un equipo del Validador) |
-| Bastian | mAP@50 de YOLO11 en la validación nueva | `docs/tablas/map50_yolo11_val.md`, `logs/evaluacion_val_best.json` | hecha (0,9436) |
-| Alonso | Secuencias de entrenamiento y split | `data/`, `configs/split.yaml`, `scripts/preparar_split.py` | hecha (`scripts/preparar_split.py`: dos `data.yaml` en `runs/` y [tabla](tablas/cuadros_por_split.md): 69 / 16 / 15 % de cuadros y cajas) |
+| Bastian | mAP@50 de YOLO11 en la validación nueva | `resultados/tablas/map50_yolo11_val.md`, `resultados/evaluacion_val_best.json` | hecha (0,9436) |
+| Alonso | Secuencias de entrenamiento y split | `data/`, `configs/split.yaml`, `scripts/preparar_split.py` | hecha (`scripts/preparar_split.py`: dos `data.yaml` en `runs/` y [tabla](../resultados/tablas/cuadros_por_split.md): 69 / 16 / 15 % de cuadros y cajas) |
 | Alonso | Revisión de consistencia entre etiquetados | `docs/` (informe) | pendiente |
 | Alonso | Seguimiento por canal (ByteTrack) | `src/tracker/seguimiento.py` | hecha (un tracker por canal; ByteTrack o BoT-SORT según el perfil; video con `scripts/video_conteo.py`) |
 | Alonso | Conteo por canal, línea simple | `src/tracker/conteo.py`, `scripts/video_conteo.py` | hecha (`uv run tracker procesar` de punta a punta; falta probarlo en un video real contra la referencia) |
@@ -27,7 +27,7 @@ Estados: **hecha** · **en curso** · **pendiente**. Todo lo nuevo vive en `src/
 
 | Responsable | Tarea | Archivos | Estado |
 |---|---|---|---|
-| Bastian | Entrenar YOLO26 (solo DAT-01 y Lab 15 + DAT-01) | `src/entrenar.py`, `configs/split.yaml` | pendiente |
+| Bastian | Entrenar YOLO26 (solo DAT-01 y Lab 15 + DAT-01) | `src/entrenamiento/entrenar.py`, `configs/split.yaml` | pendiente |
 | Bastian | Elegir detector y dejar pesos en `weights/` | `weights/`, `configs/perfiles/variante.yaml` | pendiente |
 | Bastian | Error de conteo base vs variante y caso difícil | `src/tracker/comparar.py` (por crear), `docs/` | pendiente |
 | Bastian | Integración y entrega | todo | pendiente |
@@ -40,5 +40,4 @@ Estados: **hecha** · **en curso** · **pendiente**. Todo lo nuevo vive en `src/
 ## Pendientes de decisión
 - Aceptación del formato común por el Validador (`docs/formato_comun.md`).
 - Los videos originales no están en el repo: para probar se arman desde `data/` con `scripts/secuencia_a_video.py`, y se pierden los saltos de numeración.
-- `src/grilla.py` copia el ganador a `weights/best.pt`: no ejecutarla sin cambiarle el destino.
-- Material del Lab 15 que sigue describiendo la partición antigua: `analysis/`, `docs/tablas/*.csv`, `docs/figuras/`, `docs/metodologia.md` y `logs/` (R1..R8, `grilla.csv`, `criterio_*`).
+- Material del Lab 15 que describe la partición antigua: archivado en `lab15/` (`analysis/` y `metodologia.md`).

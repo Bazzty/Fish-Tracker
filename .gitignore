@@ -23,11 +23,11 @@ weights/*.pt
 #   runs/     data.yaml de entrenamiento (preparar_split.py) y corridas de Ultralytics
 outputs/
 runs/
-logs/**/*.pt
-logs/**/*.jpg
-logs/**/*.jpeg
-logs/prueba/
-logs/*/args.yaml
+resultados/**/*.pt
+resultados/**/*.jpg
+resultados/**/*.jpeg
+resultados/prueba/
+resultados/*/args.yaml
 *.bundle
 
 # Material de apoyo para la presentación: no se versiona
@@ -36,7 +36,7 @@ Contreras-Carrera.zip
 
 # Datos y corridas locales del equipo
 data_lab15_viejo/
-logs/yolo26_dat01/
+resultados/yolo26_dat01/
 
 # Nunca versionar datos de entrenamiento, aunque queden fuera de data/
 *.jpg
