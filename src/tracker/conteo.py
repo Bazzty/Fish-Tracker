@@ -10,8 +10,8 @@ Contrato (lo llama pipeline.procesar una vez por cuadro, después del seguimient
 - Devuelve los eventos de conteo nuevos de ese cuadro:
       {canal, id, cuadro, tiempo_s, conteo}      # 'conteo' = acumulado del canal tras este evento
   con tiempo_s = cuadro / fps. Un mismo (canal, id) cuenta una sola vez.
-- Debe ser CAUSAL: decidir solo con lo visto hasta el cuadro actual (la regla vieja de
-  contar.contar_cruces mira la posición final del ID y no sirve en vivo).
+- Debe ser CAUSAL: decidir solo con lo visto hasta el cuadro actual (la regla del Lab 15 miraba
+  la posición final del ID y no servía en vivo).
 - perfil['conteo']['tipo']: 'linea_simple' (cruce de linea_a, base) o 'histeresis' (A -> B, variante).
 
 Línea simple (docs/formato_comun.md, regla de conteo): un pez cuenta en el primer cuadro en que su
@@ -20,6 +20,8 @@ centro llega a la línea A desde arriba, es decir, en el cuadro anterior en que 
 por primera vez ya bajo la línea no cuenta.
 """
 from typing import Protocol
+
+from tracker.canales import Canal, canal_de
 
 
 class Contador(Protocol):
@@ -64,3 +66,27 @@ def crear_contador(cfg: dict, perfil: dict, canales: list, fps: float) -> Contad
     if tipo == "histeresis":
         raise NotImplementedError("Pendiente (Alonso, semana 2): conteo con histéresis A -> B.")
     raise ValueError(f"Tipo de conteo desconocido: '{tipo}' (use linea_simple o histeresis).")
+
+
+def canal_cuadro(cfg: dict, ancho: int, alto: int) -> Canal:
+    """Un tubo del tamaño del cuadro con la línea A en conteo.linea de config.yaml (referencia por secuencia)."""
+    linea = float(cfg["conteo"]["linea"])
+    return Canal("canal_1", (0, 0, ancho, alto), "cuadro completo", linea, min(linea + 0.1, 1.0))
+
+
+def contar_trayectorias(tray: dict, cuadros: list[int], canales: list[Canal], fps: float) -> dict[str, int]:
+    """Aplica la línea simple a trayectorias en formato MOT ({cuadro: [[id, x, y, w, h], ...]}).
+
+    Cada caja va al canal que contiene su centro. Lo usan la referencia (trayectorias de DAT-02) y
+    evaluar_seguimiento (trayectorias de cada tracker), así los dos cuentan con la misma regla.
+    """
+    activos = [c for c in canales if c.activo]
+    contador = ContadorLinea(activos, fps)
+    for f in cuadros:
+        filas = []
+        for i, x, y, w, h in tray.get(f, ()):
+            c = canal_de(activos, x + w / 2, y + h / 2)
+            if c:
+                filas.append(dict(canal=c.id, id=int(i), cy=y + h / 2))
+        contador.actualizar(f, filas)
+    return contador.conteos()

@@ -1,0 +1,9 @@
+# DeepSORT (librería deep-sort-realtime), valores por defecto fijados aquí.
+# Además del movimiento usa la apariencia de cada pez (red MobileNet sobre el recorte de la caja),
+# por eso necesita la imagen de cada cuadro. Los pesos de MobileNet vienen dentro del paquete.
+tracker_type: deepsort
+max_age: 30                 # cuadros que se conserva un ID perdido
+n_init: 3                   # cuadros seguidos para confirmar un ID nuevo
+max_iou_distance: 0.7       # asociación por posición: une si 1 - IoU <= 0.7
+max_cosine_distance: 0.2    # asociación por apariencia: une si la distancia coseno <= 0.2
+nn_budget: null             # apariencias guardadas por ID (null = sin límite)

@@ -100,7 +100,7 @@ def procesar_iter(video: str | Path, canales: list[Canal], perfil=None, solo_det
             if not ok:
                 break
             dets = detector.detectar(img)
-            tray = seguidor.actualizar(cuadro, dets) if seguidor else []
+            tray = seguidor.actualizar(cuadro, dets, img) if seguidor else []
             eventos = contador.actualizar(cuadro, tray) if contador else []
             conteos = contador.conteos() if contador else {c.id: 0 for c in activos}
             yield Avance(cuadro, info["cuadros"], cuadro / info["fps"], img, dets, tray, eventos, conteos)
