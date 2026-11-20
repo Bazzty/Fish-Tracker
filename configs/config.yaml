@@ -15,21 +15,24 @@ rutas:
   pesos: weights                      # weights/best.pt = configuración elegida
   salidas: outputs                    # videos anotados y eventos de conteo (no se versiona)
 
-# Fijo e igual en las 8 corridas: solo cambian los factores de la grilla.
+# Entrenamiento completo (el final). Los experimentos cortos usan la sección experimentos.
 entrenamiento:
   epocas: 100
   paciencia: 20              # early stopping sobre la métrica de validación
   lote: 16
-  workers: 2                 # en Windows más de 2 suele ir más lento
+  workers: 2                 # 2: 159 s/época vs 6: 181 s/época (yolo26n, dat01, RTX 5070 Ti, Windows)
   optimizador: SGD           # explícito: con "auto" Ultralytics ignora lr0 y la grilla no lo probaría
   cache: false               # false | disk | ram (ram puede romper la reproducibilidad)
 
-grilla:                      # 2 x 2 x 2 = 8 corridas (R1..R8)
-  modelos: [yolo11n.pt, yolo11s.pt]
-  imgsz: [640, 960]
-  lr0: [0.01, 0.001]
-  empate_map50: 0.01         # diferencias menores se tratan como empate: gana la más simple
-  linea_base: [yolo11n.pt, yolo11s.pt]   # COCO sin entrenar, evaluadas sin distinguir clase
+# Experimentos cortos para elegir el detector YOLO26: 2 modelos x 2 versiones de datos = 4 corridas.
+experimentos:
+  modelos: [yolo26n.pt, yolo26s.pt]
+  datos: [dat01, lab15_dat01]   # A: solo DAT-01 · B: Lab 15 + DAT-01 (ver escribir_data_yaml en src/comun.py)
+  epocas: 30
+  paciencia: 10
+  imgsz: 640                    # igual que el YOLO11 base (weights/best.yaml)
+  lr0: 0.001
+  empate_map50: 0.01            # diferencias menores son empate: gana el modelo más chico
 
 # Evaluación del detector (mAP). conf bajo es el estándar para calcular mAP.
 evaluacion:

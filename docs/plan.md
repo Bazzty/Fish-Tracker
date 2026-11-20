@@ -27,8 +27,8 @@ Estados: **hecha** · **en curso** · **pendiente**. Todo lo nuevo vive en `src/
 
 | Responsable | Tarea | Archivos | Estado |
 |---|---|---|---|
-| Bastian | Entrenar YOLO26 (solo DAT-01 y Lab 15 + DAT-01) | `src/entrenamiento/entrenar.py`, `configs/split.yaml` | pendiente |
-| Bastian | Elegir detector y dejar pesos en `weights/` | `weights/`, `configs/perfiles/variante.yaml` | pendiente |
+| Bastian | Entrenar YOLO26 (solo DAT-01 y Lab 15 + DAT-01) | `src/entrenamiento/entrenar.py`, `src/entrenamiento/experimentos.py`, `resultados/tablas/experimentos_yolo26.md`, `configs/split.yaml` | hecha (ganador: yolo26n con dat01) |
+| Bastian | Elegir detector y dejar pesos en `weights/` | `weights/yolo26.pt`, `configs/perfiles/variante.yaml` | hecha |
 | Bastian | Error de conteo base vs variante y caso difícil | `src/tracker/comparar.py` (por crear), `docs/` | pendiente |
 | Bastian | Integración y entrega | todo | pendiente |
 | Alonso | Conteo con histéresis, filtro y herencia de estado | `src/tracker/conteo.py` | pendiente |

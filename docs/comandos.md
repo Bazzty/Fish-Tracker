@@ -82,6 +82,15 @@ uv run python src/entrenamiento/evaluar.py                      # test (usar una
 
 # Probar el entrenamiento con 1 época; no toca weights/ 📂
 uv run python src/entrenamiento/entrenar.py --nombre prueba --epocas 1
+
+# Experimentos cortos YOLO26 (4 corridas, ~3 h): escribe resultados/tablas/experimentos_yolo26.md
+uv run python src/entrenamiento/experimentos.py
+
+# Entrenamiento final del ganador (100 épocas, paciencia 20)
+uv run python src/entrenamiento/entrenar.py --modelo yolo26n.pt --datos dat01 --imgsz 640 --lr0 0.001 --nombre yolo26_final
+
+# Medir YOLO26 en validación: guarda resultados/evaluacion_val_yolo26.json
+uv run python src/entrenamiento/evaluar.py --pesos weights/yolo26.pt --split val
 ```
 
 La línea base de YOLO11 en la validación nueva es mAP@50 **0,9436** ([tabla](../resultados/tablas/map50_yolo11_val.md)).

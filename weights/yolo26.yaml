@@ -1,0 +1,10 @@
+corrida: yolo26_final
+modelo: yolo26n.pt
+datos: dat01
+imgsz: 640
+lr0: 0.001
+epocas: 47
+map50_val: 0.9916
+map50_95_val: 0.7446
+origen: resultados/yolo26_final/weights/best.pt
+sha256: ac17f410ea21dab927a152c144a30e81038700377925ce07f795f74a86ee51bd

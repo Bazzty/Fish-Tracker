@@ -89,7 +89,7 @@ data/                               # no se versiona
 | Videos: conteo, seguimiento, secuencia | `scripts/video_conteo.py`, `scripts/video_seguimiento.py`, `scripts/secuencia_a_video.py` |
 | Referencia de conteo desde DAT-02 | `scripts/conteo_referencia.py`, `configs/conteo_real.yaml` |
 
-Línea base de detección (YOLO11 del Lab 15 en la validación nueva, 8 secuencias de DAT-01): mAP@50 **0,9436** ([tabla](resultados/tablas/map50_yolo11_val.md)).
+Línea base de detección (YOLO11 del Lab 15 en la validación nueva, 8 secuencias de DAT-01): mAP@50 **0,9436** ([tabla](resultados/tablas/map50_yolo11_val.md)). YOLO26n (`weights/yolo26.pt`) llega a mAP@50 **0,9916** en la misma validación ([comparación](resultados/tablas/yolo11_vs_yolo26.md)).
 
 > Lo que sigue (diseño, partición, reproducción y resultados) describe el **Lab 15** y su partición antigua de 6 secuencias; sus cifras no valen para la Solemne 3.
 > Los scripts `entorno.py`, `grilla.py`, `contar.py`, `criterio.py`, `analisis.py` y `visualizador.py` del Lab 15 se quitaron del repositorio (siguen en el historial de git, antes del commit «chore: quitar scripts y resultados del Lab 15»). Estas secciones se conservan solo como referencia de cómo se obtuvo el detector.
