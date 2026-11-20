@@ -18,6 +18,7 @@ output_*.mp4
 /*.pt
 weights/*.pt
 !weights/best.pt
+!weights/yolo26.pt
 # Generados por los scripts
 #   outputs/  videos, corridas de 'tracker procesar' y evaluacion_seguimiento/
 #   runs/     data.yaml de entrenamiento (preparar_split.py) y corridas de Ultralytics
@@ -36,7 +37,6 @@ Contreras-Carrera.zip
 
 # Datos y corridas locales del equipo
 data_lab15_viejo/
-resultados/yolo26_dat01/
 
 # Nunca versionar datos de entrenamiento, aunque queden fuera de data/
 *.jpg
