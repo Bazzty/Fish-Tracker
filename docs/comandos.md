@@ -77,14 +77,14 @@ uv run python scripts/preparar_split.py
 
 ```bash
 # Medir el detector (mAP@50, precisión, recall) 📂
-uv run python src/evaluar.py --split val          # validación: guarda logs/evaluacion_val_best.json
-uv run python src/evaluar.py                      # test (usar una sola vez, al final)
+uv run python src/entrenamiento/evaluar.py --split val          # validación: guarda resultados/evaluacion_val_best.json
+uv run python src/entrenamiento/evaluar.py                      # test (usar una sola vez, al final)
 
 # Probar el entrenamiento con 1 época; no toca weights/ 📂
-uv run python src/entrenar.py --nombre prueba --epocas 1
+uv run python src/entrenamiento/entrenar.py --nombre prueba --epocas 1
 ```
 
-La línea base de YOLO11 en la validación nueva es mAP@50 **0,9436** ([tabla](tablas/map50_yolo11_val.md)).
+La línea base de YOLO11 en la validación nueva es mAP@50 **0,9436** ([tabla](../resultados/tablas/map50_yolo11_val.md)).
 
 ## 5. Git: sincronizar con el equipo
 

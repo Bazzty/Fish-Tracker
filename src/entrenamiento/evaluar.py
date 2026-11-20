@@ -5,15 +5,18 @@ configuración, para que el mAP sea reproducible. Evalúa sin distinguir clase (
 no cambia nada en el modelo entrenado (una sola clase) y permite evaluar la línea base de COCO.
 
 Uso:
-    uv run python src/evaluar.py                     # weights/best.pt en test
-    uv run python src/evaluar.py --split val
-    uv run python src/evaluar.py --pesos yolo11n.pt --split val    # línea base COCO
+    uv run python src/entrenamiento/evaluar.py                     # weights/best.pt en test
+    uv run python src/entrenamiento/evaluar.py --split val
+    uv run python src/entrenamiento/evaluar.py --pesos yolo11n.pt --split val    # línea base COCO
 """
 import argparse
 import json
+import sys
 from pathlib import Path
 
-from comun import (
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))  # src/, donde está comun.py
+
+from comun import (  # noqa: E402
     RAIZ, cargar_config, dispositivo, escribir_data_yaml, imgsz_de_pesos, ir_a_raiz, relativa, ruta_abs, sha256,
 )
 
@@ -25,7 +28,7 @@ def evaluar(cfg: dict, pesos: str | Path, split: str = "test", imgsz: int | None
     pesos = Path(pesos)
     es_base = not pesos.exists() and pesos.parent == Path(".")  # yolo11n.pt de COCO: Ultralytics lo descarga
     if not pesos.exists() and not es_base:
-        raise SystemExit(f"[ERROR] No se encontraron los pesos '{pesos}'. Ejecute antes src/grilla.py.")
+        raise SystemExit(f"[ERROR] No se encontraron los pesos '{pesos}'. Entrene antes con src/entrenamiento/entrenar.py.")
     yolo = YOLO(str(pesos))
     if imgsz is None:
         imgsz = imgsz_de_pesos(Path(yolo.ckpt_path)) if getattr(yolo, "ckpt_path", None) else 640
@@ -56,7 +59,7 @@ def evaluar(cfg: dict, pesos: str | Path, split: str = "test", imgsz: int | None
         "recall": float(r.box.mr),
     }
     if guardar:
-        salida = ruta_abs(cfg["rutas"]["logs"]) / f"evaluacion_{split}_{pesos.stem}.json"
+        salida = ruta_abs(cfg["rutas"]["resultados"]) / f"evaluacion_{split}_{pesos.stem}.json"
         salida.parent.mkdir(parents=True, exist_ok=True)
         salida.write_text(json.dumps(res, indent=2), encoding="utf-8")
         res["archivo"] = str(salida)
