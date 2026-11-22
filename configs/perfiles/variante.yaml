@@ -1,8 +1,8 @@
-# Variante propia. PENDIENTE: los pesos YOLO26 se entrenan en la semana 2 (Bastian) y el
-# tracker y el conteo con histéresis los fija Alonso; hasta entonces este perfil no se puede usar.
+# Variante propia. Los pesos YOLO26 ya existen (weights/yolo26.pt, Bastian). PENDIENTE: el
+# tracker y el conteo con histéresis los fija Alonso.
 nombre: variante
 detector:
-  pesos: weights/yolo26_dat01.pt   # aún no existe
+  pesos: weights/yolo26.pt
   conf: 0.10
   iou: 0.7
 tracker:
