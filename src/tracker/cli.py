@@ -2,12 +2,14 @@
 
     uv run tracker                                   # abre la aplicación
     uv run tracker inferir --video v.mp4             # solo detector -> outputs/deteccion/<detector>/<secuencia>/
-    uv run tracker procesar --video v.mp4 --canales dos_tubos [--perfil variante] [--conteo linea_simple]
+    uv run tracker procesar --video v.mp4 --canales dos_tubos [--perfil base] [--conteo linea_simple]
                                                      # [--tracker configs/ocsort.yaml]
                                                      # -> outputs/seguimiento/... y outputs/conteo/... con anotado.mp4
     uv run tracker validar outputs/conteo/<...>      # comprueba una carpeta contra el formato común
     uv run tracker evaluar-seguimiento --conjunto val [--trackers configs/bytetrack.yaml configs/ocsort.yaml ...] [--oraculo]
 
+Perfil por defecto: variante (YOLO26 + OC-SORT de configs/tracker_variante.yaml + dos líneas); --perfil base es la
+línea base del plan (YOLO11 + ByteTrack + línea simple).
 --canales acepta una ruta o el nombre de un JSON de configs/ (dos_tubos = configs/canales_dos_tubos.json).
 La secuencia se toma de --seq o del nombre del video (seq_00015.mp4 -> seq_00015); si tiene DAT-02, conteo.json
 trae también el conteo real.
@@ -19,7 +21,7 @@ from pathlib import Path
 from comun import cargar_config, dir_datos, listar_cuadros, secuencias
 from tracker import formato
 from tracker.canales import Canal, cargar_canales, ruta_canales
-from tracker.pipeline import cargar_perfil, info_video, procesar
+from tracker.pipeline import PERFIL_POR_DEFECTO, cargar_perfil, info_video, procesar
 from tracker.salidas import (carpeta, con_conteo, escribir_conteo, escribir_seguimiento, nombre_detector,
                              nombre_regla, nombre_tracker)
 from tracker.seguimiento import con_tracker
@@ -122,13 +124,14 @@ def main(argv: list[str] | None = None) -> int:
     inf.add_argument("--video", required=True)
     inf.add_argument("--seq", help="nombre de la secuencia (por defecto, el del video)")
     inf.add_argument("--salida", help="carpeta de salida (por defecto outputs/deteccion/<detector>/<secuencia>)")
-    inf.add_argument("--perfil", default="base")
+    inf.add_argument("--perfil", default=PERFIL_POR_DEFECTO, help="variante (YOLO26, por defecto) o base (YOLO11)")
     pro = sub.add_parser("procesar", help="detector + seguimiento + conteo por canal")
     pro.add_argument("--video", required=True)
     pro.add_argument("--canales", required=True, help="JSON de tubos: ruta o nombre en configs/ (p. ej. dos_tubos)")
     pro.add_argument("--seq", help="nombre de la secuencia (por defecto, el del video); con DAT-02 da el conteo real")
     pro.add_argument("--salida", help="todo en esta carpeta (por defecto outputs/seguimiento/... y outputs/conteo/...)")
-    pro.add_argument("--perfil", default="base")
+    pro.add_argument("--perfil", default=PERFIL_POR_DEFECTO,
+                     help="variante (YOLO26 + OC-SORT + dos líneas, por defecto) o base (YOLO11 + ByteTrack + línea simple)")
     pro.add_argument("--tracker", help="YAML de otro tracker (bytetrack, botsort, ocsort, deepsort); reemplaza el del perfil")
     pro.add_argument("--sin-video", action="store_true", help="no dibujar el video anotado (más rápido)")
     pro.add_argument("--conteo", choices=["linea_simple", "dos_lineas"], help="regla de conteo (por defecto la del perfil)")
@@ -137,7 +140,8 @@ def main(argv: list[str] | None = None) -> int:
     evs = sub.add_parser("evaluar-seguimiento", help="IDF1, ID switches y MOTA contra las trayectorias de DAT-02")
     evs.add_argument("--conjunto", default="val")
     evs.add_argument("--seq", nargs="+", help="secuencias concretas (en vez de --conjunto)")
-    evs.add_argument("--perfil", default="base", help="detector y regla de conteo; el tracker lo eligen --trackers")
+    evs.add_argument("--perfil", default=PERFIL_POR_DEFECTO,
+                     help="detector y regla de conteo (por defecto variante); el tracker lo eligen --trackers")
     evs.add_argument("--trackers", nargs="+", help="YAMLs a comparar; por defecto el del perfil")
     evs.add_argument("--oraculo", action="store_true", help="cajas del GT en vez del detector")
     evs.add_argument("--conteo", choices=["linea_simple", "dos_lineas"], help="regla de conteo (por defecto la del perfil)")

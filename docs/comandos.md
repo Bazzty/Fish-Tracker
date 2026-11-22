@@ -28,18 +28,18 @@ uv run tracker inferir --video VIDEO.mp4
 uv run tracker procesar --video VIDEO.mp4 --canales dos_tubos
 
 # Lo mismo con otro tracker (bytetrack, botsort, botsort_reid, ocsort o deepsort) o con la variante
-uv run tracker procesar --video VIDEO.mp4 --canales dos_tubos --tracker configs/ocsort.yaml
-uv run tracker procesar --video VIDEO.mp4 --canales dos_tubos --perfil variante
+uv run tracker procesar --video VIDEO.mp4 --canales dos_tubos --tracker configs/botsort.yaml
+uv run tracker procesar --video VIDEO.mp4 --canales dos_tubos --perfil base      # línea base (YOLO11)
 
-# Variante (YOLO26) contando con una sola línea en vez de dos
-uv run tracker procesar --video VIDEO.mp4 --canales dos_tubos --perfil variante --conteo linea_simple
+# YOLO26 contando con una sola línea en vez de dos
+uv run tracker procesar --video VIDEO.mp4 --canales dos_tubos --conteo linea_simple
 
 # Revisar que la salida cumpla el formato
 uv run tracker validar outputs/conteo/<detector>_<tracker>/<secuencia>/<regla>
 ```
 
 - `--canales` es el JSON de tubos que guarda la interfaz. Para un solo tubo del tamaño del cuadro (1456 × 1088) existe `configs/canales_cuadro_completo.json`.
-- `--perfil` elige la configuración: `base` (YOLO11 + ByteTrack + línea simple, por defecto) o `variante` (YOLO26 + tracker del barrido + histéresis).
+- `--perfil` elige la configuración: `variante` (YOLO26 + OC-SORT ganador del barrido + dos líneas, **por defecto**) o `base` (YOLO11 + ByteTrack + línea simple, la línea base del plan).
 - Si el video o el JSON no existen, el comando termina con `[ERROR] ...` y no deja archivos a medias.
 
 ```bash
@@ -72,7 +72,7 @@ uv run python scripts/conteo_referencia.py
 uv run python scripts/conteo_referencia.py --guardar
 
 # Video del seguimiento (bytetrack, botsort, botsort_reid, ocsort o deepsort) 📂
-uv run python scripts/video_seguimiento.py seq_00015 --tracker botsort
+uv run python scripts/video_seguimiento.py seq_00015                    # tracker de la variante; --tracker botsort para otro
 
 # Preparar el split de entrenamiento 📂
 uv run python scripts/preparar_split.py
