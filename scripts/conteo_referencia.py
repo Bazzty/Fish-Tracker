@@ -7,7 +7,7 @@ cuenta en un solo tubo del tamaño del cuadro, con la línea A en conteo.linea d
 Uso:
     uv run python scripts/conteo_referencia.py                        # val y test: imprime la referencia
     uv run python scripts/conteo_referencia.py --guardar              # y la escribe en configs/conteo_real.yaml
-    uv run python scripts/conteo_referencia.py --seq seq_00015 --canales dos_tubos --comparar outputs/conteo/best_bytetrack/seq_00015/linea_simple
+    uv run python scripts/conteo_referencia.py --seq seq_00015 --canales dos_tubos --comparar outputs/conteo/yolo26_ocsort/seq_00015/dos_lineas
 """
 import argparse
 import json

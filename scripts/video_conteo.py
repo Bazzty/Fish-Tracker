@@ -5,7 +5,7 @@ Lee la carpeta del conteo (formato común + conteo.json) y el video original, y 
 contado) y el conteo de cada tubo. Útil si se borró el video o se procesó con --sin-video.
 
 Uso:
-    uv run python scripts/video_conteo.py outputs/conteo/best_bytetrack/seq_00015/linea_simple --video outputs/videos/seq_00015.mp4
+    uv run python scripts/video_conteo.py outputs/conteo/yolo26_ocsort/seq_00015/dos_lineas --video outputs/videos/seq_00015.mp4
 """
 import argparse
 import json

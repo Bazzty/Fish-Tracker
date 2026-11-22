@@ -6,7 +6,7 @@ outputs/evaluacion_seguimiento/<detector>/<secuencia>/<tracker>.txt y deja el vi
 cambia de color a mitad de camino, ahí el tracker le dio un ID nuevo (cambio de ID).
 
 Uso:
-    uv run python scripts/video_seguimiento.py seq_00015                       # bytetrack, perfil base
+    uv run python scripts/video_seguimiento.py seq_00015                       # tracker de la variante (OC-SORT)
     uv run python scripts/video_seguimiento.py seq_00015 --tracker botsort
     uv run python scripts/video_seguimiento.py seq_00015 --oraculo
 """
@@ -34,8 +34,9 @@ def color(i: int) -> tuple[int, int, int]:
 
 p = argparse.ArgumentParser()
 p.add_argument("seq")
-p.add_argument("--tracker", default="bytetrack", help="nombre del YAML usado (bytetrack, botsort)")
-p.add_argument("--perfil", default="base", help="el de la evaluación: indica el detector")
+p.add_argument("--tracker", default="tracker_variante",
+               help="nombre del YAML evaluado (tracker_variante por defecto; bytetrack, botsort, ocsort, ...)")
+p.add_argument("--perfil", default="variante", help="el de la evaluación: indica el detector (por defecto variante)")
 p.add_argument("--oraculo", action="store_true", help="trayectorias de la corrida con --oraculo")
 p.add_argument("--fps", type=float, default=None, help="por defecto conteo.fps_cuadros de config.yaml")
 p.add_argument("--config", default=None)
