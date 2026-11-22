@@ -31,8 +31,8 @@ Estados: **hecha** · **en curso** · **pendiente**. Todo lo nuevo vive en `src/
 | Bastian | Elegir detector y dejar pesos en `weights/` | `weights/yolo26.pt`, `configs/perfiles/variante.yaml` | hecha |
 | Bastian | Error de conteo base vs variante y caso difícil | `src/tracker/comparar.py` (por crear), `docs/` | pendiente |
 | Bastian | Integración y entrega | todo | pendiente |
-| Alonso | Conteo con histéresis, filtro y herencia de estado | `src/tracker/conteo.py` | pendiente |
-| Alonso | Ajuste de ByteTrack y comparación de trackers (IDF1, ID switches contra DAT-02) | `src/tracker/seguimiento.py`, `src/tracker/evaluar_seguimiento.py`, `configs/{bytetrack,botsort,botsort_reid,ocsort,deepsort}.yaml` | en curso (5 trackers listos, con y sin oráculo: `uv run tracker evaluar-seguimiento`; falta correrla con DAT-02 y ajustar) |
+| Alonso | Conteo con histéresis, filtro y herencia de estado | `src/tracker/conteo.py`, `configs/perfiles/variante.yaml` | hecha (`--perfil variante` en `procesar` y en `evaluar-seguimiento`; probado con casos a mano y datos sintéticos, falta con DAT-02) |
+| Alonso | Ajuste de ByteTrack y comparación de trackers (IDF1, ID switches contra DAT-02) | `src/tracker/seguimiento.py`, `src/tracker/evaluar_seguimiento.py`, `configs/{bytetrack,botsort,botsort_reid,ocsort,deepsort}.yaml`, `scripts/barrido_tracker.py` | en curso (5 trackers y el barrido listos: `uv run python scripts/barrido_tracker.py --aplicar`; falta correrlo con DAT-02 para la tabla y la decisión) |
 | Angelo | Avance en vivo y conteo por canal | `src/tracker/gui/` | pendiente |
 | Angelo | Exportar al formato común, con errores claros | `src/tracker/formato.py`, `src/tracker/gui/` | pendiente |
 | Angelo | Prueba con el Validador y README de uso | `README.md` | pendiente |

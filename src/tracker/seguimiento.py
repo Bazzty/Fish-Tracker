@@ -13,10 +13,10 @@ Contrato (lo llama pipeline.procesar una vez por cuadro, en orden):
   'id' es único dentro del canal y no se reutiliza. Un pez cuyo centro cae fuera de todo canal
   activo no genera fila. Debe llamarse también con listas vacías para que los IDs perdidos envejezcan.
 
-Un tracker por canal: cada detección va al canal que contiene su centro. El tipo y su YAML salen del perfil
-(tracker.tipo, tracker.config):
-    bytetrack  ByteTrack de Ultralytics        configs/bytetrack.yaml   (match_thresh del perfil)
-    botsort    BoT-SORT de Ultralytics         configs/botsort.yaml     (match_thresh del perfil)
+Un tracker por canal: cada detección va al canal que contiene su centro. El YAML sale del perfil
+(tracker.config) y el tipo, de su tracker_type (si no lo trae, de tracker.tipo):
+    bytetrack  ByteTrack de Ultralytics        configs/bytetrack.yaml   (match_thresh del perfil si el YAML no lo trae)
+    botsort    BoT-SORT de Ultralytics         configs/botsort.yaml     (match_thresh del YAML)
                con ReID                        configs/botsort_reid.yaml (necesita la imagen; describe cada pez
                                                                         con los pesos del detector del perfil)
     ocsort     OC-SORT de Roboflow 'trackers'  configs/ocsort.yaml      (necesita Python >= 3.11)
@@ -49,7 +49,8 @@ class _Ultralytics:
         from ultralytics.trackers.byte_tracker import BYTETracker
         from ultralytics.utils import IterableSimpleNamespace
 
-        args["match_thresh"] = float(match_thresh if match_thresh is not None else args.get("match_thresh", 0.8))
+        if "match_thresh" not in args:  # si el YAML no lo fija, manda el del perfil (Lab 15: se elige en validación)
+            args["match_thresh"] = float(match_thresh if match_thresh is not None else 0.8)
         self.reid = tipo == "botsort" and bool(args.get("with_reid"))
         if self.reid:
             if args.get("model", "detector") in ("detector", "auto"):  # 'auto' necesita al detector dentro del tracker
@@ -127,19 +128,28 @@ def con_tracker(perfil: dict, config: str) -> dict:
             "tracker": {**perfil.get("tracker", {}), "tipo": tipo, "config": str(config)}}
 
 
+def tipo_y_args(perfil: dict) -> tuple[str, dict]:
+    """Tipo del tracker (tracker_type del YAML; si no lo trae, tracker.tipo del perfil) y sus parámetros."""
+    t = perfil["tracker"]
+    ruta = ruta_abs(t["config"])
+    if not ruta.exists():
+        raise FileNotFoundError(f"No existe la configuración del tracker: {t['config']}")
+    yaml = leer_yaml(ruta)
+    tipo = str(yaml.get("tracker_type", t.get("tipo", "bytetrack"))).lower()
+    if tipo not in TIPOS:
+        raise ValueError(f"Tracker '{tipo}' no soportado (use {', '.join(TIPOS)}).")
+    return tipo, {k: v for k, v in yaml.items() if k != "tracker_type"}
+
+
 def necesita_imagen(perfil: dict) -> bool:
     """True si el tracker del perfil mira la apariencia (DeepSORT, o BoT-SORT con with_reid)."""
-    t = perfil["tracker"]
-    tipo = str(t.get("tipo", "bytetrack")).lower()
-    return tipo == "deepsort" or (tipo == "botsort" and bool(leer_yaml(ruta_abs(t["config"])).get("with_reid")))
+    tipo, args = tipo_y_args(perfil)
+    return tipo == "deepsort" or (tipo == "botsort" and bool(args.get("with_reid")))
 
 
 def nuevo_tracker(perfil: dict):
     t = perfil["tracker"]
-    tipo = str(t.get("tipo", "bytetrack")).lower()
-    if tipo not in TIPOS:
-        raise ValueError(f"Tracker '{tipo}' no soportado (use {', '.join(TIPOS)}).")
-    args = {k: v for k, v in leer_yaml(ruta_abs(t["config"])).items() if k != "tracker_type"}
+    tipo, args = tipo_y_args(perfil)
     if tipo in ("bytetrack", "botsort"):
         pesos = perfil.get("detector", {}).get("pesos")
         return _Ultralytics(tipo, {**args, "tracker_type": tipo}, t.get("match_thresh"), pesos)

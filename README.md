@@ -23,22 +23,33 @@ uv sync
 uv run python scripts/preparar_split.py
 ```
 
-**3. Contar los salmones de un video.** Arma un video desde `data/` (no hay videos originales en el repo), lo procesa (detector → seguimiento por tubo → conteo), dibuja el resultado y lo compara con la referencia de DAT-02.
+**3. Contar los salmones de un video.** Arma un video desde `data/` (no hay videos originales en el repo), lo procesa (detector → seguimiento por tubo → conteo) y deja el video anotado; al terminar imprime dónde quedó cada archivo. Si la secuencia tiene DAT-02, `conteo.json` trae también el conteo real y el error por tubo.
 
 ```powershell
 uv run python scripts/secuencia_a_video.py seq_00015
-uv run tracker procesar --video outputs/videos/seq_00015.mp4 --canales configs/canales_cuadro_completo.json --salida outputs/seq_00015
-uv run python scripts/video_conteo.py outputs/seq_00015 --video outputs/videos/seq_00015.mp4
-uv run python scripts/conteo_referencia.py --seq seq_00015 --canales configs/canales_cuadro_completo.json --comparar outputs/seq_00015
+uv run tracker procesar --video outputs/videos/seq_00015.mp4 --canales dos_tubos
 ```
 
-- `procesar` usa el tracker del perfil (`base` = ByteTrack). Para otro: `--tracker configs/ocsort.yaml` (también `botsort.yaml`, `botsort_reid.yaml` o `deepsort.yaml`).
-- `--canales` es el JSON con los tubos (`src/tracker/canales.py`): por cada tubo, su rectángulo `caja` en píxeles y la línea de conteo `linea_a` como fracción de su alto. `configs/canales_cuadro_completo.json` es un solo tubo del tamaño del cuadro (1456 × 1088) con la línea a la mitad; la interfaz de Angelo guardará los tubos reales en este mismo formato.
-- Regla de conteo (línea simple): un pez `(canal, id)` suma **una sola vez**, cuando su centro pasa de estar sobre la línea A del tubo a estar en ella o bajo ella. Subir no cuenta, ni aparecer ya bajo la línea ([formato común](docs/formato_comun.md#regla-de-conteo)).
-- `procesar` deja en `outputs/seq_00015/` los 5 archivos del formato común; `video_conteo.py` agrega `anotado.mp4` (tubos, línea A en amarillo, cada pez con su ID y su ruta, en verde cuando ya contó).
-- `conteo_referencia.py` aplica la misma regla a las trayectorias etiquetadas (el conteo correcto) y con `--comparar` muestra tracker, referencia y error por tubo. Usar **el mismo** JSON de tubos en los dos comandos.
+Qué deja `procesar` (lo ejecutado / detector_tracker / secuencia; qué es cada campo: [`docs/metricas.md`](docs/metricas.md)):
 
-**4. Evaluar el seguimiento contra DAT-02.** Corre el detector una vez por secuencia y cada tracker sobre esas detecciones; escribe `outputs/evaluacion_seguimiento/<perfil>/metricas.csv` y `metricas.json` (el mismo contenido para leerlo desde código, con fecha, perfil, pesos y secuencias de la corrida; IDF1, ID switches, MOTA, cajas de más y de menos, peces del GT y del tracker y **el conteo**: lo que cuenta cada tracker con la línea simple, la referencia de DAT-02 y el error absoluto, que es la comparación principal del plan) y las trayectorias de cada tracker. Con `--oraculo` usa las cajas del GT en vez del detector, para separar fallas del tracker de fallas del detector.
+```
+outputs/seguimiento/best_bytetrack/seq_00015/seguimiento.json         cada pez por tubo, cuadro a cuadro
+outputs/conteo/best_bytetrack/seq_00015/linea_simple/conteo.json      contados, conteo real y error por tubo
+outputs/conteo/best_bytetrack/seq_00015/linea_simple/anotado.mp4      el video con tubos, líneas, IDs y conteo
+outputs/conteo/best_bytetrack/seq_00015/linea_simple/                 + los 5 archivos del formato común
+```
+
+`best` es el detector del perfil `base` (YOLO11) y `yolo26` el de `variante`; la última carpeta es la regla de conteo (`linea_simple` en `base`, `dos_lineas` en `variante`). Con `--salida CARPETA` todo queda en esa carpeta.
+
+- `procesar` usa el tracker del perfil (`base` = ByteTrack). Para otro: `--tracker configs/ocsort.yaml` (también `botsort.yaml`, `botsort_reid.yaml` o `deepsort.yaml`).
+- `--canales` es el JSON con los tubos (`src/tracker/canales.py`), por ruta o por nombre en `configs/`: por cada tubo, su rectángulo `caja` en píxeles y sus líneas `linea_a` y `linea_b` como fracción de su alto. De prueba (1456 × 1088): `cuadro_completo` (un tubo) y `dos_tubos` (mitad izquierda y derecha). La interfaz de Angelo guarda los tubos reales en este mismo formato.
+- La secuencia sale del nombre del video (`seq_00015.mp4`) o de `--seq`.
+- `--conteo linea_simple` o `--conteo dos_lineas` cambia la regla sin cambiar de perfil. Por ejemplo, YOLO26 con una sola línea: `--perfil variante --conteo linea_simple`. También sirve en `evaluar-seguimiento` y en el barrido.
+- Regla de conteo (línea simple): un pez `(canal, id)` suma **una sola vez**, cuando su centro pasa de estar sobre la línea A del tubo a estar en ella o bajo ella. Subir no cuenta, ni aparecer ya bajo la línea ([formato común](docs/formato_comun.md#regla-de-conteo)).
+- Regla de la variante (`--perfil variante`, histéresis): el pez se «arma» al verse sobre la línea A y cuenta al llegar a la línea B, así una caja que oscila no suma de más. No cuenta trayectorias de menos de 5 cuadros, y un ID nuevo que aparece donde debería estar otro perdido hace poco (última posición + velocidad) hereda su estado: no se cuenta dos veces ni se pierde un pez que el tracker fragmentó. Parámetros en `configs/perfiles/variante.yaml`.
+- `anotado.mp4`: tubos, línea A en amarillo (y B en naranja con dos líneas), cada pez con su ID y su ruta, en verde cuando ya contó. `--sin-video` lo omite; `scripts/video_conteo.py <carpeta del conteo> --video <video>` lo rehace.
+
+**4. Evaluar el seguimiento contra DAT-02.** Corre el detector una vez por secuencia y cada tracker sobre esas detecciones; escribe en `outputs/evaluacion_seguimiento/<detector>/` (`best`, `yolo26` u `oraculo`) las trayectorias de cada tracker por secuencia (`<secuencia>/<tracker>.txt`) y `metricas_<grupo>_<regla>.csv` y `.json` (p. ej. `metricas_val_linea_simple.csv`; el JSON trae lo mismo con fecha, perfil, pesos y secuencias; qué es cada columna: [`docs/metricas.md`](docs/metricas.md); IDF1, ID switches, MOTA, cajas de más y de menos, peces del GT y del tracker y **el conteo**: lo que cuenta cada tracker con la regla del perfil (línea simple en `base`, histéresis en `variante`), la referencia de DAT-02 y el error absoluto, que es la comparación principal del plan). Con `--oraculo` usa las cajas del GT en vez del detector, para separar fallas del tracker de fallas del detector.
 
 Trackers disponibles (cada uno con su YAML en `configs/`): **ByteTrack** y **BoT-SORT** (Ultralytics), **BoT-SORT con ReID** (`botsort_reid.yaml`), **OC-SORT** (librería `trackers`, Python ≥ 3.11) y **DeepSORT** (`deep-sort-realtime`). Los dos que miran la apariencia de cada pez necesitan la imagen y son más lentos: DeepSORT usa una red MobileNet y BoT-SORT con ReID usa los pesos del propio detector. Con `--oraculo` reciben las cajas del GT pero igual miran la imagen real.
 
@@ -54,12 +65,19 @@ uv run python scripts/video_seguimiento.py seq_00015 --tracker ocsort       # ca
 uv run python scripts/conteo_referencia.py --guardar
 ```
 
+**6. Elegir el tracker de la variante (barrido).** Prueba variantes de cada tracker (`track_buffer`, `match_thresh`, umbral de OC-SORT), con el detector y con oráculo, y las ordena por error de conteo, luego IDF1 y luego cambios de ID. Escribe [`resultados/tablas/comparacion_trackers.md`](resultados/tablas/comparacion_trackers.md) con la tabla y la decisión; con `--aplicar` deja el ganador en `configs/tracker_variante.yaml`, que es el tracker del perfil `variante`. `--rapido` omite DeepSORT y BoT-SORT+ReID, los más lentos.
+
+```powershell
+uv run python scripts/barrido_tracker.py --aplicar
+```
+
 **Otros comandos.**
 
 ```powershell
 uv run tracker                                                  # abre la aplicación (interfaz en construcción)
-uv run tracker inferir --video outputs/videos/seq_00015.mp4 --salida outputs/inferencia/seq_00015   # solo detector
-uv run tracker validar outputs/seq_00015                        # comprueba una carpeta contra el formato común
+uv run tracker inferir --video outputs/videos/seq_00015.mp4     # solo detector -> outputs/deteccion/best/seq_00015/
+uv run tracker validar outputs/conteo/best_bytetrack/seq_00015/linea_simple   # comprueba el formato común
+uv run python scripts/conteo_referencia.py --guardar            # conteo real de val y test -> configs/conteo_real.yaml
 ```
 
 ### Datos de la Solemne 3
@@ -83,7 +101,8 @@ data/                               # no se versiona
 | Canal (tubo) y su línea de conteo, en JSON | `src/tracker/canales.py`, `configs/canales_cuadro_completo.json` |
 | Detector por cuadro (solo cambian los pesos) | `src/tracker/detector.py` |
 | Seguimiento por canal: un tracker por tubo (ByteTrack, BoT-SORT con o sin ReID, OC-SORT o DeepSORT) | `src/tracker/seguimiento.py`, `configs/bytetrack.yaml`, `botsort.yaml`, `botsort_reid.yaml`, `ocsort.yaml`, `deepsort.yaml` |
-| Conteo: línea simple (lista) e histéresis (semana 2) | `src/tracker/conteo.py` |
+| Conteo: línea simple (base) e histéresis con filtro y herencia de estado (variante) | `src/tracker/conteo.py` |
+| Barrido y elección del tracker de la variante | `scripts/barrido_tracker.py`, `configs/tracker_variante.yaml` |
 | Evaluación del seguimiento contra DAT-02 | `src/tracker/evaluar_seguimiento.py` |
 | Exportar, leer y validar el formato común | `src/tracker/formato.py` |
 | Interfaz (Angelo) | `src/tracker/gui/` |

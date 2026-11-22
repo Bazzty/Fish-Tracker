@@ -55,6 +55,19 @@ def guardar_canales(ruta: str | Path, canales: list[Canal], video: str | None = 
     Path(ruta).write_text(json.dumps(doc, indent=2, ensure_ascii=False), encoding="utf-8")
 
 
+def ruta_canales(nombre: str | Path) -> Path:
+    """Una ruta a un JSON, o su nombre en configs/: 'dos_tubos' -> configs/canales_dos_tubos.json."""
+    from comun import ruta_abs
+
+    n = str(nombre)
+    candidatos = [Path(n), ruta_abs(n), ruta_abs("configs") / n, ruta_abs("configs") / f"{n}.json",
+                  ruta_abs("configs") / f"canales_{n}.json"]
+    for c in candidatos:
+        if c.is_file():
+            return c
+    raise FileNotFoundError(f"No existe el JSON de canales '{n}' (ni como ruta ni en configs/).")
+
+
 def cargar_canales(ruta: str | Path) -> list[Canal]:
     doc = json.loads(Path(ruta).read_text(encoding="utf-8"))
     if doc.get("version") != VERSION:

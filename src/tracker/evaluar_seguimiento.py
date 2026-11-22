@@ -2,18 +2,13 @@
 
 Entrada: imágenes de data/<seq>/images y DAT-02 en data/tracking/<seq>[_Final]/gt/gt.txt (formato MOT),
 con frames.txt (cuadro,imagen) para unir cada cuadro del gt con su imagen.
-Salida en outputs/evaluacion_seguimiento/<perfil>/:
-    metricas.csv     una fila por secuencia y tracker, y una fila TOTAL por tracker (ordenadas por IDF1).
-                     Columnas: PERCENTAGE OF CORRECT IDs (IDF1), TIMES ID CHANGED (IDSW), MOTA,
-                     EXTRA BOXES (FP), MISSING BOXES (FN), Frag, MT, ML, TOTAL FISHES (peces del GT),
-                     FISHES COUNTED BY TRACKER (IDs distintos que creó el tracker) y el conteo con la
-                     línea simple (un tubo del tamaño del cuadro, línea A en conteo.linea): COUNT TRACKER
-                     (trayectorias del tracker), COUNT REFERENCE (trayectorias de DAT-02) y
-                     COUNT ERROR = |COUNT TRACKER - COUNT REFERENCE|. En TOTAL los conteos se suman y el
-                     error es |suma del tracker - suma de la referencia|.
-    metricas.json    lo mismo (más MOTP) con el contexto de la corrida: fecha, perfil, pesos, oráculo y
-                     secuencias; por tracker, el total y cada secuencia. Tasas de 0 a 1 (IDF1 0.7471 = 74,71 %).
-    trayectorias/    <tracker>/<seq>.txt en formato MOT; los dibuja scripts/video_seguimiento.py.
+Salida en outputs/evaluacion_seguimiento/<detector>/ (<detector> = nombre de los pesos, u 'oraculo'):
+    <secuencia>/<tracker>.txt   trayectorias de cada tracker en formato MOT; las dibuja scripts/video_seguimiento.py.
+    metricas_<grupo>.csv        una fila por secuencia y tracker, y una fila TOTAL por tracker (ordenadas por IDF1).
+                                <grupo> = el conjunto (val, test) o las secuencias pedidas con --seq.
+                                Qué significa cada columna: docs/metricas.md. COUNT TRACKER usa la regla del perfil
+                                (histéresis con --perfil variante); COUNT REFERENCE, la línea simple sobre DAT-02.
+    metricas_<grupo>.json       lo mismo (más MOTP) con fecha, perfil, pesos, oráculo y secuencias. Tasas de 0 a 1.
 
 El detector corre una vez por secuencia y cada tracker usa esas mismas detecciones, con un solo canal
 del tamaño del cuadro. Con --oraculo las detecciones son las cajas del GT (aísla el tracker).
@@ -73,6 +68,18 @@ def cuadros_seq(cfg: dict, seq: str) -> list[tuple[int, Path]]:
         pares = [l.split(",", 1) for l in frames.read_text(encoding="utf-8").splitlines() if "," in l]
         return [(int(f), imgs / n.strip()) for f, n in pares]
     return [(i + 1, r) for i, (_, r) in enumerate(listar_cuadros(imgs))]
+
+
+def conteo_referencia(cfg: dict, seq: str, canales: list | None = None) -> dict[str, int]:
+    """El conteo correcto de una secuencia: la línea simple aplicada a sus trayectorias de DAT-02.
+
+    Sin canales, un tubo del tamaño del cuadro con la línea A en conteo.linea de config.yaml.
+    """
+    gt, cuadros = leer_mot(dir_gt(cfg, seq) / "gt" / "gt.txt"), cuadros_seq(cfg, seq)
+    if canales is None:
+        alto, ancho = cv2.imread(str(cuadros[0][1])).shape[:2]
+        canales = [canal_cuadro(cfg, ancho, alto)]
+    return contar_trayectorias(gt, [f for f, _ in cuadros], canales, float(cfg["conteo"]["fps_cuadros"]))
 
 
 def iou(a: np.ndarray, b: np.ndarray) -> np.ndarray:
@@ -171,7 +178,7 @@ def seguir(perfil: dict, cuadros: list, dets: list, ancho: int, alto: int) -> di
 
 
 def evaluar(cfg: dict, perfil: dict, seqs: list[str], trackers: list[str], salida: Path,
-            oraculo: bool = False) -> list[dict]:
+            oraculo: bool = False, grupo: str = "val") -> list[dict]:
     """Filas por secuencia y una fila TOTAL por tracker (métricas sobre la suma de las secuencias)."""
     filas, sumas = [], {t: defaultdict(float) for t in trackers}
     for seq in seqs:
@@ -183,12 +190,13 @@ def evaluar(cfg: dict, perfil: dict, seqs: list[str], trackers: list[str], salid
         ref = sum(contar_trayectorias(gt, [f for f, _ in cuadros], canal, fps).values())
         for t in trackers:
             pred = seguir(con_tracker(perfil, t), cuadros, dets, ancho, alto)
-            (salida / "trayectorias" / Path(t).stem).mkdir(parents=True, exist_ok=True)
-            (salida / "trayectorias" / Path(t).stem / f"{seq}.txt").write_text(
+            (salida / seq).mkdir(parents=True, exist_ok=True)
+            (salida / seq / f"{Path(t).stem}.txt").write_text(
                 "\n".join(f"{f},{int(i)},{x:.1f},{y:.1f},{w:.1f},{h:.1f},1,-1,-1,-1"
                           for f in sorted(pred) for i, x, y, w, h in pred[f]), encoding="utf-8")
             c = acumular(gt, pred, [f for f, _ in cuadros])
-            c["conteo_tracker"] = sum(contar_trayectorias(pred, [f for f, _ in cuadros], canal, fps).values())
+            c["conteo_tracker"] = sum(contar_trayectorias(pred, [f for f, _ in cuadros], canal, fps,
+                                                          perfil.get("conteo")).values())
             c["conteo_referencia"] = ref
             for k, v in c.items():
                 sumas[t][k] += v
@@ -199,11 +207,11 @@ def evaluar(cfg: dict, perfil: dict, seqs: list[str], trackers: list[str], salid
     totales = [dict(tracker=Path(t).stem, secuencia="TOTAL", **metricas(sumas[t])) for t in trackers]
     filas += sorted(totales, key=lambda r: -r["IDF1"])
     salida.mkdir(parents=True, exist_ok=True)
-    with open(salida / "metricas.csv", "w", newline="", encoding="utf-8-sig") as f:
+    with open(salida / f"metricas_{grupo}.csv", "w", newline="", encoding="utf-8-sig") as f:
         w = csv.writer(f)
         w.writerow(COLUMNAS)
         w.writerows([fmt(r[k]) if k in ("IDF1", "MOTA") else r[k] for k in COLUMNAS.values()] for r in filas)
-    escribir_json(salida / "metricas.json", cfg, perfil, seqs, trackers, oraculo, filas)
+    escribir_json(salida / f"metricas_{grupo}.json", cfg, perfil, seqs, trackers, oraculo, filas)
     return filas
 
 
@@ -226,6 +234,7 @@ def escribir_json(ruta: Path, cfg: dict, perfil: dict, seqs: list[str], trackers
         "oraculo": oraculo,
         "umbral_iou": 0.5,
         "linea_conteo": float(cfg["conteo"]["linea"]),
+        "regla_conteo": perfil.get("conteo", {}).get("tipo", "linea_simple"),  # la referencia usa siempre linea_simple
         "secuencias": list(seqs),
         "ranking_idf1": nombres,
         "trackers": {n: por_tracker[n] for n in nombres},
