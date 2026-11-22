@@ -21,21 +21,25 @@ uv run tracker           # abre la interfaz: abrir video, dibujar tubos, guardar
 | `tracker evaluar-seguimiento` | Compara trackers (IDF1, cambios de ID, MOTA) contra las trayectorias de DAT-02 📂. |
 
 ```bash
-# Solo el detector (usa el cuadro completo como un solo tubo)
-uv run tracker inferir --video VIDEO.mp4 --salida outputs/inferencia
+# Solo el detector (usa el cuadro completo como un solo tubo) -> outputs/deteccion/<detector>/<secuencia>/
+uv run tracker inferir --video VIDEO.mp4
 
-# Flujo completo: detectar, seguir y contar
-uv run tracker procesar --video VIDEO.mp4 --canales CANALES.json --salida outputs/resultado
+# Flujo completo: detectar, seguir y contar -> outputs/seguimiento/... y outputs/conteo/...
+uv run tracker procesar --video VIDEO.mp4 --canales dos_tubos
 
-# Lo mismo con otro tracker (bytetrack, botsort, botsort_reid, ocsort o deepsort)
-uv run tracker procesar --video VIDEO.mp4 --canales CANALES.json --salida outputs/resultado --tracker configs/ocsort.yaml
+# Lo mismo con otro tracker (bytetrack, botsort, botsort_reid, ocsort o deepsort) o con la variante
+uv run tracker procesar --video VIDEO.mp4 --canales dos_tubos --tracker configs/ocsort.yaml
+uv run tracker procesar --video VIDEO.mp4 --canales dos_tubos --perfil variante
+
+# Variante (YOLO26) contando con una sola línea en vez de dos
+uv run tracker procesar --video VIDEO.mp4 --canales dos_tubos --perfil variante --conteo linea_simple
 
 # Revisar que la salida cumpla el formato
-uv run tracker validar outputs/resultado
+uv run tracker validar outputs/conteo/<detector>_<tracker>/<secuencia>/<regla>
 ```
 
 - `--canales` es el JSON de tubos que guarda la interfaz. Para un solo tubo del tamaño del cuadro (1456 × 1088) existe `configs/canales_cuadro_completo.json`.
-- `--perfil` elige la configuración: `base` (por defecto) o `variante` (pendiente de la semana 2).
+- `--perfil` elige la configuración: `base` (YOLO11 + ByteTrack + línea simple, por defecto) o `variante` (YOLO26 + tracker del barrido + histéresis).
 - Si el video o el JSON no existen, el comando termina con `[ERROR] ...` y no deja archivos a medias.
 
 ```bash
@@ -50,8 +54,9 @@ uv run tracker evaluar-seguimiento --conjunto val --trackers configs/bytetrack.y
 | Script | Qué hace |
 |---|---|
 | `secuencia_a_video.py` 📂 | Arma un `.mp4` desde las imágenes de una secuencia, porque no hay videos originales. |
-| `video_conteo.py` | Dibuja tubos, línea A, cajas con ID y conteo sobre una corrida de `procesar`. |
+| `video_conteo.py` | Rehace el `anotado.mp4` de una corrida de `procesar` (que ya lo genera; útil con `--sin-video`). |
 | `video_seguimiento.py` 📂 | Dibuja caja, ID y ruta de cada pez, a partir de `evaluar-seguimiento`. |
+| `barrido_tracker.py` 📂 | Prueba umbrales de los 5 trackers contra DAT-02 y deja la tabla y la decisión en `resultados/tablas/comparacion_trackers.md`; `--aplicar` fija el ganador en el perfil `variante`. |
 | `conteo_referencia.py` 📂 | Aplica la regla de conteo a las trayectorias etiquetadas (el conteo correcto) y lo compara con el del tracker. |
 | `preparar_split.py` 📂 | Escribe los dos `data.yaml` de entrenamiento y la tabla de cuadros por conjunto. |
 | `generar_ejemplo_formato.py` | Regenera `docs/ejemplo_formato/` con datos sintéticos. **Sobrescribe esos archivos.** |
@@ -59,11 +64,8 @@ uv run tracker evaluar-seguimiento --conjunto val --trackers configs/bytetrack.y
 ```bash
 # De una secuencia a un video con el conteo dibujado 📂
 uv run python scripts/secuencia_a_video.py seq_00015
-uv run tracker procesar --video outputs/videos/seq_00015.mp4 --canales configs/canales_cuadro_completo.json --salida outputs/seq_00015
-uv run python scripts/video_conteo.py outputs/seq_00015 --video outputs/videos/seq_00015.mp4
-
-# Comparar el conteo del tracker con la referencia (usar el MISMO JSON de tubos en ambos) 📂
-uv run python scripts/conteo_referencia.py --seq seq_00015 --canales configs/canales_cuadro_completo.json --comparar outputs/seq_00015
+uv run tracker procesar --video outputs/videos/seq_00015.mp4 --canales dos_tubos
+# al terminar imprime dónde quedó todo: seguimiento.json, conteo.json (contado, real y error por tubo) y anotado.mp4
 
 # Referencia de conteo de val y test; con --guardar escribe configs/conteo_real.yaml 📂
 uv run python scripts/conteo_referencia.py

@@ -20,7 +20,8 @@ weights/*.pt
 !weights/best.pt
 !weights/yolo26.pt
 # Generados por los scripts
-#   outputs/  videos, corridas de 'tracker procesar' y evaluacion_seguimiento/
+#   outputs/  <lo ejecutado>/<detector>_<tracker>/<secuencia>/: deteccion, seguimiento, conteo,
+#             evaluacion_seguimiento, barrido_tracker y videos
 #   runs/     data.yaml de entrenamiento (preparar_split.py) y corridas de Ultralytics
 outputs/
 runs/

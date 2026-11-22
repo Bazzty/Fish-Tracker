@@ -1,14 +1,15 @@
-# Variante propia. Los pesos YOLO26 ya existen (weights/yolo26.pt, Bastian). PENDIENTE: el
-# tracker y el conteo con histéresis los fija Alonso.
+# Variante propia: detector YOLO26 (Bastian), tracker elegido en el barrido y conteo con histéresis (Alonso).
 nombre: variante
 detector:
   pesos: weights/yolo26.pt
   conf: 0.10
-  iou: 0.7
+  iou: 0.5                       # NMS: une cajas que se solapan >= 0.5 (con 0.7 quedaban cajas duplicadas del mismo pez)
 tracker:
-  tipo: bytetrack                  # se cambia por el mejor tras la comparación (botsort, ocsort, deepsort)
-  config: configs/bytetrack.yaml   # con track_buffer y umbrales ajustados
-  match_thresh: 0.8
+  config: configs/tracker_variante.yaml   # el ganador del barrido (scripts/barrido_tracker.py --aplicar);
+                                          # el tipo sale de su tracker_type
 conteo:
-  tipo: histeresis                 # A -> B + filtro de trayectorias cortas + herencia de estado
-  min_cuadros: 5
+  tipo: histeresis                 # se arma sobre la línea A y cuenta al llegar a la B (src/tracker/conteo.py)
+  min_cuadros: 5                   # filtro: no cuenta trayectorias vistas menos cuadros
+  herencia_cuadros: 15             # herencia: un ID nuevo hereda el estado de otro perdido hace hasta 15 cuadros
+  herencia_distancia: 1.5          #   ... si aparece a menos de 1,5 altos de caja de donde debería estar
+                                   #   (última posición + velocidad x cuadros perdidos) y sin subir
