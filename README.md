@@ -21,6 +21,19 @@ Los comandos se ejecutan desde la raíz del repositorio. FFmpeg se instala como 
 uv sync
 ```
 
+### Interfaz
+
+`uv run tracker` abre la aplicación (`src/tracker/gui/`). Procesa siempre con el perfil `variante`; la constante `PERFIL` de `src/tracker/gui/proceso.py` elige otro.
+
+1. **Abrir video…** y recorrerlo con **▶ Reproducir** (Espacio) o arrastrando la barra.
+2. **Dibujar tubo:** arrastrar el mouse sobre el video (Esc cancela). El tubo queda en edición: los cuadritos blancos cambian el tamaño, arrastrar por dentro lo mueve y los círculos amarillos mueven las líneas **A** y **B** (los peces avanzan de arriba hacia abajo). Un clic sobre un tubo lo vuelve a abrir; el panel derecho permite ajustar nombre, líneas (%) y posición, y **✔ Listo** lo fija.
+3. Marcar ✔ en la lista los tubos que se analizan. **Guardar canales…** escribe el JSON de tubos (`<video>.canales.json`) y **Cargar canales…** lo lee; un `canales.json` del Validador se procesa tal cual, con sus propias líneas.
+4. **⚙ Procesar video:** corre el pipeline en un hilo aparte, con el video, las cajas e IDs, una barra de progreso y el conteo por tubo en vivo (un tubo sin peces muestra 0). **✖ Cancelar** lo detiene.
+5. **Exportar resultados…** escribe el formato común en `<carpeta elegida>/<video>_<perfil>/` y lo valida. Los errores (sin video, sin tubos marcados, pesos no encontrados, carpeta sin permiso, archivos que no cumplen el formato) se muestran con un mensaje claro.
+6. **Ver resultados:** el último procesamiento, o una carpeta del formato común (por ejemplo `docs/ejemplo_formato`). Muestra el conteo por tubo, los eventos de conteo y un **diagnóstico del seguimiento** (`diagnostico.py`) que clasifica *caja intermitente*, *ID perdido* e *ID nuevo* a partir de `trayectorias.csv`. Es una heurística sin etiquetas de referencia; sus umbrales están en `diagnostico.Params`.
+
+Los tubos nuevos parten con las líneas en A = 55 % y B = 65 % del alto (`src/tracker/gui/lineas.py`).
+
 ### Perfiles
 
 Un perfil define el detector, el tracker y la regla de conteo. Se selecciona con `--perfil`; si se omite, se usa `variante`.
@@ -165,6 +178,7 @@ data/
 | Video anotado | `src/tracker/video.py` |
 | Formato común: exportar, leer y validar | `src/tracker/formato.py` |
 | Evaluación del seguimiento contra DAT-02 | `src/tracker/evaluar_seguimiento.py` |
+| Error de conteo base vs. variante | `src/tracker/comparar.py` (`tracker comparar`) |
 | Interfaz gráfica | `src/tracker/gui/` |
 | Perfiles | `configs/perfiles/base.yaml`, `configs/perfiles/variante.yaml` |
 | Partición y archivos de datos | `configs/split.yaml`, `scripts/preparar_split.py` |
@@ -183,12 +197,13 @@ Todas las cifras son de secuencias que el modelo no vio al entrenar. Val sirvió
 | Detector, recall en val | 0,8904 | 0,9673 | [yolo11_vs_yolo26.md](resultados/tablas/yolo11_vs_yolo26.md) |
 | Detector, mAP@50 en test | — | 0,9913 | [yolo11_vs_yolo26.md](resultados/tablas/yolo11_vs_yolo26.md) |
 | Conteo en val (8 secuencias) | — | 135 de 137 peces, IDF1 93,0 % | [comparacion_trackers.md](resultados/tablas/comparacion_trackers.md) |
-| **Conteo en test (9 secuencias)** | — | **131 de 132 peces, IDF1 93,2 %** | [seguimiento_test.md](resultados/tablas/seguimiento_test.md) |
+| **Conteo en test (9 secuencias)** | **96 de 132 peces (error 27,3 %), IDF1 52,0 %** | **131 de 132 peces (error 0,8 %), IDF1 93,2 %** | [error_conteo_test.md](resultados/tablas/error_conteo_test.md), [seguimiento_test.md](resultados/tablas/seguimiento_test.md) |
 
 Cómo se eligió cada pieza:
 
 - **Detector:** YOLO26n con DAT-01 ([experimentos_yolo26.md](resultados/tablas/experimentos_yolo26.md)). Se compararon n y s y dos versiones de datos; quedaron empatados y ganó el n por ser más liviano y rápido. También se comprobó yolo26s a 100 épocas y lr0 0,01 en lugar de 0,001, sin mejora.
 - **Tracker:** OC-SORT, elegido en val entre cinco trackers y 28 combinaciones de parámetros ([comparacion_trackers.md](resultados/tablas/comparacion_trackers.md)).
+- **Base vs. variante:** cambiando un componente a la vez, el que más reduce el error es el tracker. La base pierde peces cuando el detector falla justo sobre la línea, como en el [caso difícil](docs/caso_dificil.md) ([error_conteo_test.md](resultados/tablas/error_conteo_test.md)).
 
 Límite: train, val y test vienen de la misma cámara. Las cifras valen para este montaje; en otra instalación hay que validar de nuevo.
 
@@ -207,8 +222,6 @@ Fish-Tracker/
 ├── weights/           best.pt (YOLO11, base) y yolo26.pt (variante), cada uno con su ficha .yaml
 ├── resultados/        métricas (.json), curvas de entrenamiento (results.csv) y tablas/
 ├── docs/              comandos, métricas, formato común y plan
-├── issues/            problemas encontrados
-├── lab15/             archivo del Lab 15 (diseño, partición antigua y resultados)
 ├── data/              datos privados (no se versiona)
 └── outputs/           videos y corridas (no se versiona)
 ```
@@ -224,5 +237,3 @@ Fish-Tracker/
 - `plots=False`: Ultralytics no guarda imágenes del dataset en `resultados/`. Los datos no salen de `data/`.
 - Los comandos para entrenar y medir el detector están en [`docs/comandos.md`](docs/comandos.md).
 - Entrega: `git archive --format=zip --prefix=Fish-Tracker/ -o Fish-Tracker.zip HEAD` (incluye solo lo versionado: sin `data/`, `.venv/` ni `outputs/`).
-
-El material del Lab 15 (diseño original, partición antigua y sus resultados) está en [`lab15/README.md`](lab15/README.md).
