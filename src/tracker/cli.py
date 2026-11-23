@@ -2,15 +2,15 @@
 
     uv run tracker                                   # abre la aplicación
     uv run tracker inferir --video v.mp4             # solo detector -> outputs/deteccion/<detector>/<secuencia>/
-    uv run tracker procesar --video v.mp4 --canales dos_tubos [--perfil base] [--conteo linea_simple]
+    uv run tracker procesar --video v.mp4 --canales dos_tubos [--conteo linea_simple]
                                                      # [--tracker configs/ocsort.yaml] [--fps 5 (video anotado)]
                                                      # -> outputs/seguimiento/... y outputs/conteo/... con anotado.mp4
     uv run tracker validar outputs/conteo/<...>      # comprueba una carpeta contra el formato común
     uv run tracker evaluar-seguimiento --conjunto val [--trackers configs/bytetrack.yaml configs/ocsort.yaml ...] [--oraculo]
     uv run tracker comparar "Base=<metricas>.json" "Variante=<metricas>.json[:tracker]" [--salida tabla.md]
 
-Perfil por defecto: variante (YOLO26 + OC-SORT de configs/tracker_variante.yaml + dos líneas); --perfil base es la
-línea base del plan (YOLO11 + ByteTrack + línea simple).
+Perfil: variante (YOLO26 + OC-SORT de configs/tracker_variante.yaml + dos líneas). La línea base del plan
+(YOLO11 + ByteTrack + línea simple) quedó en la rama comparacion-yolo11-base.
 --canales acepta una ruta o el nombre de un JSON de configs/ (dos_tubos = configs/canales_dos_tubos.json).
 La secuencia se toma de --seq o del nombre del video (seq_00015.mp4 -> seq_00015); si tiene DAT-02, conteo.json
 trae también el conteo real.
@@ -125,14 +125,14 @@ def main(argv: list[str] | None = None) -> int:
     inf.add_argument("--video", required=True)
     inf.add_argument("--seq", help="nombre de la secuencia (por defecto, el del video)")
     inf.add_argument("--salida", help="carpeta de salida (por defecto outputs/deteccion/<detector>/<secuencia>)")
-    inf.add_argument("--perfil", default=PERFIL_POR_DEFECTO, help="variante (YOLO26, por defecto) o base (YOLO11)")
+    inf.add_argument("--perfil", default=PERFIL_POR_DEFECTO, help="nombre o YAML de configs/perfiles (por defecto variante)")
     pro = sub.add_parser("procesar", help="detector + seguimiento + conteo por canal")
     pro.add_argument("--video", required=True)
     pro.add_argument("--canales", required=True, help="JSON de tubos: ruta o nombre en configs/ (p. ej. dos_tubos)")
     pro.add_argument("--seq", help="nombre de la secuencia (por defecto, el del video); con DAT-02 da el conteo real")
     pro.add_argument("--salida", help="todo en esta carpeta (por defecto outputs/seguimiento/... y outputs/conteo/...)")
     pro.add_argument("--perfil", default=PERFIL_POR_DEFECTO,
-                     help="variante (YOLO26 + OC-SORT + dos líneas, por defecto) o base (YOLO11 + ByteTrack + línea simple)")
+                     help="nombre o YAML de configs/perfiles (por defecto variante: YOLO26 + OC-SORT + dos líneas)")
     pro.add_argument("--tracker", help="YAML de otro tracker (bytetrack, botsort, ocsort, deepsort); reemplaza el del perfil")
     pro.add_argument("--sin-video", action="store_true", help="no dibujar el video anotado (más rápido)")
     pro.add_argument("--fps", type=float, help="fps del video anotado (por defecto, los del video); no cambia el conteo")

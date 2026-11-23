@@ -1,4 +1,4 @@
-"""Detector por cuadro. Solo cambia el archivo de pesos entre YOLO11 y YOLO26 (perfil.detector.pesos)."""
+"""Detector por cuadro con los pesos del perfil (perfil.detector.pesos: weights/yolo26.pt)."""
 import numpy as np
 
 from comun import dispositivo, imgsz_de_pesos, ir_a_raiz, ruta_abs

@@ -1,5 +1,7 @@
 # YOLO11 vs YOLO26
 
+> La línea base (YOLO11, `weights/best.pt`, perfil `base`) ya no está en `main`. Para reproducir lo que usa YOLO11 en este documento, usar la rama [`comparacion-yolo11-base`](https://github.com/Bazzty/Fish-Tracker/tree/comparacion-yolo11-base).
+
 Validación (split nuevo, 8 secuencias de DAT-01). Cifras de `resultados/evaluacion_val_*.json`.
 
 | Detector | Split | mAP@50 | mAP@50:95 | Precisión | Recall |

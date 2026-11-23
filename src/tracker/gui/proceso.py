@@ -49,18 +49,6 @@ class _Cancelado(Exception):
     """Se lanza dentro del callback del pipeline para abortar el procesamiento."""
 
 
-def listar_perfiles() -> list[str]:
-    """Perfiles disponibles (configs/perfiles/*.yaml), con 'base' primero."""
-    try:
-        from comun import ruta_abs
-
-        nombres = sorted(p.stem for p in ruta_abs("configs/perfiles").glob("*.yaml"))
-    except Exception:  # sin repo o sin dependencias: valores por defecto
-        nombres = []
-    nombres = nombres or ["base", "variante"]
-    return sorted(nombres, key=lambda n: (n != "base", n))
-
-
 def mensaje_de_error(e: BaseException) -> str:
     """Convierte una excepción del pipeline en un mensaje que se entienda sin leer código."""
     texto = str(e.code) if isinstance(e, SystemExit) else str(e)
