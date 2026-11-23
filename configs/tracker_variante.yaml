@@ -1,0 +1,9 @@
+# Tracker del perfil variante. Elegido por scripts/barrido_tracker.py el 2026-11-22 (ocsort_buf15_iou0.1_min1); ver resultados/tablas/comparacion_trackers.md.
+tracker_type: ocsort
+lost_track_buffer: 15
+frame_rate: 30
+minimum_consecutive_frames: 1
+minimum_iou_threshold: 0.1
+direction_consistency_weight: 0.2
+high_conf_det_threshold: 0.25
+delta_t: 3

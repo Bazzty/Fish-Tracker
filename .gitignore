@@ -1,12 +1,14 @@
+# Datos (DAT-01, Lab 15 y DAT-02 en data/tracking/): privados, nunca se versionan
 data/
 .venv/
 .DS_Store
 __pycache__/
 *.pyc
-runs/
+.ruff_cache/
 _to_delete/
 /notebooks
 estadisticas_*.csv
+.pytest_cache
 
 # Archivos de video y pruebas de salida
 *.mp4
@@ -17,17 +19,31 @@ output_*.mp4
 /*.pt
 weights/*.pt
 !weights/best.pt
+!weights/yolo26.pt
 # Generados por los scripts
+#   outputs/  <lo ejecutado>/<detector>_<tracker>/<secuencia>/: deteccion, seguimiento, conteo,
+#             evaluacion_seguimiento, barrido_tracker y videos
+#   runs/     data.yaml de entrenamiento (preparar_split.py) y corridas de Ultralytics
 outputs/
 runs/
-logs/**/*.pt
-logs/**/*.jpg
-logs/**/*.jpeg
-logs/prueba/
-logs/*/args.yaml
+resultados/**/*.pt
+resultados/**/*.jpg
+resultados/**/*.jpeg
+resultados/prueba/
+resultados/*/args.yaml
 *.bundle
-.claude/
 
 # Material de apoyo para la presentación: no se versiona
 informe/
-Fish-Counter-entrega.zip
+Fish-Tracker.zip
+
+# Datos y corridas locales del equipo
+data_lab15_viejo/
+
+# Nunca versionar datos de entrenamiento, aunque queden fuera de data/
+*.jpg
+*.jpeg
+**/images/
+**/labels/
+labels.cache
+*.cache

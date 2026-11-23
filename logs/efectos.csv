@@ -1,7 +1,0 @@
-factor,nivel,corridas,map50_promedio
-modelo,yolo11n.pt,4,0.9236
-modelo,yolo11s.pt,4,0.9155
-imgsz,640,4,0.9244
-imgsz,960,4,0.9148
-lr0,0.001,4,0.9367
-lr0,0.01,4,0.9024

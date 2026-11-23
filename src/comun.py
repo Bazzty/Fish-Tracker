@@ -107,23 +107,29 @@ def dir_datos(cfg: dict) -> Path:
     return ruta_abs(cfg["rutas"]["datos"])
 
 
-def escribir_data_yaml(cfg: dict) -> Path:
+def escribir_data_yaml(cfg: dict, version: str | None = None) -> Path:
     """Genera el data.yaml de Ultralytics desde configs/split.yaml con ruta absoluta.
 
-    Con ruta absoluta Ultralytics no la resuelve contra su carpeta global de datasets.
-    as_posix() evita barras invertidas de Windows dentro del YAML.
+    version: None -> runs/data.yaml (train completo, como siempre); 'dat01' -> runs/data_dat01.yaml
+    (train sin las lab15_*); 'lab15_dat01' -> runs/data_lab15_dat01.yaml (train completo).
+    Val y test son siempre los mismos. Con ruta absoluta Ultralytics no la resuelve contra su carpeta
+    global de datasets; as_posix() evita barras invertidas de Windows dentro del YAML.
     """
+    if version not in (None, "dat01", "lab15_dat01"):
+        raise SystemExit(f"[ERROR] Versión de data.yaml desconocida: {version} (use dat01 o lab15_dat01)")
     datos = dir_datos(cfg)
     split = leer_split(cfg)
     faltan = [s for c in ("train", "val", "test") for s in split[c] if not (datos / s / "images").is_dir()]
     if faltan:
         raise SystemExit(f"[ERROR] Faltan secuencias en {datos}: {faltan}. Ver README, sección Datos.")
+    train = [s for s in split["train"] if not (version == "dat01" and s.startswith("lab15_"))]
     contenido = {
         "path": datos.as_posix(),
-        **{c: [f"{s}/images" for s in split[c]] for c in ("train", "val", "test")},
+        "train": [f"{s}/images" for s in train],
+        **{c: [f"{s}/images" for s in split[c]] for c in ("val", "test")},
         "names": {0: cfg["proyecto"].get("clase", "fish")},
     }
-    salida = RAIZ / "runs" / "data.yaml"
+    salida = RAIZ / "runs" / (f"data_{version}.yaml" if version else "data.yaml")
     salida.parent.mkdir(parents=True, exist_ok=True)
     with open(salida, "w", encoding="utf-8") as f:
         yaml.safe_dump(contenido, f, allow_unicode=True, sort_keys=False)
@@ -177,3 +183,33 @@ def imgsz_de_pesos(pesos: Path, por_defecto: int = 640) -> int:
     args = ckpt.get("train_args") or {}
     v = args.get("imgsz", por_defecto)
     return int(v[0] if isinstance(v, (list, tuple)) else v)
+
+
+class VideoH264:
+    """Escribe un .mp4 H.264 (yuv420p) con el FFmpeg de imageio-ffmpeg: se reproduce en cualquier lado.
+
+        video = VideoH264(ruta, ancho, alto, fps); video.escribir(img_bgr); video.cerrar()
+    """
+
+    def __init__(self, ruta: Path, ancho: int, alto: int, fps: float):
+        import subprocess
+
+        import imageio_ffmpeg
+
+        if fps <= 0:
+            raise SystemExit(f"[ERROR] Los fps del video deben ser mayores que 0 (se indicó {fps:g})")
+        self.ruta = Path(ruta)
+        self.ruta.parent.mkdir(parents=True, exist_ok=True)
+        self.proc = subprocess.Popen(
+            [imageio_ffmpeg.get_ffmpeg_exe(), "-y", "-loglevel", "error", "-f", "rawvideo", "-pix_fmt", "bgr24",
+             "-s", f"{ancho}x{alto}", "-r", f"{fps:g}", "-i", "-", "-vf", "pad=ceil(iw/2)*2:ceil(ih/2)*2",
+             "-c:v", "libx264", "-pix_fmt", "yuv420p", "-crf", "23", "-movflags", "+faststart", str(self.ruta)],
+            stdin=subprocess.PIPE)
+
+    def escribir(self, img: np.ndarray) -> None:
+        self.proc.stdin.write(img.tobytes())
+
+    def cerrar(self) -> None:
+        self.proc.stdin.close()
+        if self.proc.wait() != 0:
+            raise SystemExit(f"[ERROR] FFmpeg no pudo crear {self.ruta}")

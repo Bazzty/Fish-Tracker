@@ -1,4 +1,4 @@
-# Conteo manual de salmones distintos por secuencia (Avance 1, analysis/Analisis_000X.txt).
+# Conteo manual de salmones distintos por secuencia (Avance 1 del Lab 15; los archivos de análisis siguen en el historial de git).
 # Train 79 · Val 33 · Test 25 · Total 137.
 conteo_real:
   seq_0001: 33
