@@ -348,8 +348,10 @@ class MainWindow(QMainWindow):
         self._refresh_list(keep_row=len(self.channels) - 1)
         self.canvas.set_editing(f"canal_{n}")  # el tubo nuevo queda editable
         self.statusBar().showMessage(
-            f"Tubo {n} creado. Ajústalo con los cuadritos blancos o con el panel "
-            "(las líneas A y B son fijas). Cuando esté listo, Enter o clic fuera."
+            f"Tubo {n} creado. Ajústalo con los cuadritos blancos o con el panel"
+            + ("; mueve las líneas A y B con los círculos amarillos." if lineas.EDITABLES
+               else " (las líneas A y B son fijas).")
+            + " Cuando esté listo, Enter o clic fuera."
         )
 
     def _on_canvas_click(self, channel_id: str) -> None:
@@ -582,10 +584,11 @@ class MainWindow(QMainWindow):
                 f"{self.frame_size[0]}x{self.frame_size[1]}. No se cargaron.",
             )
             return False
-        if not self._confirm_discard("Cargar los canales del archivo"):
+        if not self._confirm_discard("Cargar los canales del archivo") or not self._confirm_resultado():
             return False
         self.canvas.set_editing(None)
         self.channels = channels
+        self._reset_resultados()
         self._refresh_list()
         distintas = [c for c in channels
                      if abs(c.linea_a - lineas.LINEA_A) > 0.005 or abs(c.linea_b - lineas.LINEA_B) > 0.005]
@@ -757,9 +760,12 @@ class MainWindow(QMainWindow):
         return True
 
     def closeEvent(self, event) -> None:
+        if self.hilo is None and not self._confirm_resultado():
+            event.ignore()
+            return
         if self.hilo is not None:  # no dejar el hilo corriendo al cerrar
             self.hilo.cancelar()
-            self.hilo.wait(8000)
+            self.hilo.wait()  # la cancelación solo se nota entre cuadros: esperar a que termine
         super().closeEvent(event)
 
     # ---- resultados (conteo por canal y diagnóstico del seguimiento) ----
