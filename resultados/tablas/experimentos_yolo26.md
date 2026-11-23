@@ -8,6 +8,8 @@
 | yolo26s.pt | dat01 | 30 | 0.9923 | 0.7392 | 0.9751 | 0.9685 |
 | yolo26s.pt | lab15_dat01 | 20 | 0.9916 | 0.7426 | 0.9685 | 0.9670 |
 
+Protocolo común a todas las corridas (`configs/config.yaml`): imgsz 640, semilla 42 con `deterministic=True`, SGD con lr0 0,001, lote 16, 30 épocas como máximo con paciencia 10. El final y las comprobaciones de abajo usan 100 épocas con paciencia 20. `epocas_hechas` es la época en que paró cada corrida.
+
 Regla: gana el mayor mAP@50 entre los YOLO26; si el modelo n queda a menos de 0.01 del mejor, gana el n.
 
 Ganador según la regla automática del script: yolo26n.pt con lab15_dat01 (empate de mAP@50; ver «Por qué»).
