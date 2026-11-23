@@ -68,12 +68,12 @@ Fish-Tracker/
 ├── configs/
 │   ├── config.yaml             parámetros de entrenamiento, evaluación y conteo
 │   ├── split.yaml              partición train / val / test por secuencia
-│   ├── perfiles/               base.yaml y variante.yaml
+│   ├── perfiles/               variante.yaml (YOLO26 + OC-SORT + dos líneas)
 │   ├── <tracker>.yaml          bytetrack, botsort, botsort_reid, ocsort, deepsort
 │   ├── tracker_variante.yaml   el tracker elegido para la variante
 │   ├── canales_*.json          tubos de ejemplo
 │   └── conteo_real.yaml        conteo de referencia por secuencia
-├── weights/                  best.pt (YOLO11, base) y yolo26.pt (variante), cada uno con su ficha .yaml
+├── weights/                  yolo26.pt (detector) y su ficha yolo26.yaml
 ├── resultados/               métricas (.json), curvas de entrenamiento (results.csv) y tablas/
 ├── docs/                     formato común, plan y caso difícil
 ├── data/                     datos privados (no se versiona)
@@ -110,12 +110,13 @@ Si el video o el JSON no existen, el comando termina con `[ERROR] ...` y no deja
 
 ### Perfiles
 
-Un perfil define el detector, el tracker y la regla de conteo. Se selecciona con `--perfil`; si se omite, se usa `variante`.
+Un perfil define el detector, el tracker y la regla de conteo. El sistema usa uno solo, `variante`; `--perfil` acepta otro YAML para experimentar.
 
 | Perfil | Detector | Tracker | Regla de conteo | Uso |
 |---|---|---|---|---|
-| `variante` (por defecto) | YOLO26 (`weights/yolo26.pt`) | OC-SORT (`configs/tracker_variante.yaml`) | Dos líneas | Configuración final del sistema. |
-| `base` | YOLO11 (`weights/best.pt`) | ByteTrack (`configs/bytetrack.yaml`) | Línea simple | Línea base del plan, para comparar. |
+| `variante` | YOLO26 (`weights/yolo26.pt`) | OC-SORT (`configs/tracker_variante.yaml`) | Dos líneas | Configuración final del sistema. |
+
+La línea base del plan (YOLO11 + ByteTrack + línea simple, perfil `base`) ya no está en `main`: sus pesos y su perfil quedaron en la rama [`comparacion-yolo11-base`](https://github.com/Bazzty/Fish-Tracker/tree/comparacion-yolo11-base), que sirve para reproducir la comparación. Sus resultados siguen documentados en [Resultados](#resultados).
 
 La regla de conteo puede cambiarse sin cambiar de perfil con `--conteo linea_simple` o `--conteo dos_lineas`, y el tracker con `--tracker configs/<tracker>.yaml`.
 
@@ -136,7 +137,6 @@ Como el repositorio no incluye los videos originales, primero se arma uno a part
 uv run python scripts/secuencia_a_video.py seq_00015                          # 📂
 uv run tracker procesar --video outputs/videos/seq_00015.mp4 --canales dos_tubos
 
-uv run tracker procesar --video outputs/videos/seq_00015.mp4 --canales dos_tubos --perfil base            # línea base
 uv run tracker procesar --video outputs/videos/seq_00015.mp4 --canales dos_tubos --tracker configs/botsort.yaml
 uv run tracker procesar --video outputs/videos/seq_00015.mp4 --canales dos_tubos --conteo linea_simple
 uv run tracker inferir --video outputs/videos/seq_00015.mp4                   # solo el detector -> outputs/deteccion/yolo26/seq_00015/
@@ -223,14 +223,13 @@ Val se usa para comparar y ajustar. La medición final, con el tracker de la var
 
 ```bash
 uv run tracker evaluar-seguimiento --conjunto test
-uv run tracker evaluar-seguimiento --conjunto test --perfil base     # línea base, para comparar
 ```
 
-Los resultados se guardan en `outputs/evaluacion_seguimiento/<detector>/` (`yolo26`, `best` u `oraculo`): las trayectorias de cada tracker en `<secuencia>/<tracker>.txt` (formato MOT; `video_seguimiento.py` deja a su lado `<tracker>.mp4`) y las métricas en `metricas_<grupo>_<regla>.csv` y `.json` ([qué significa cada columna](#evaluación-del-seguimiento)).
+Los resultados se guardan en `outputs/evaluacion_seguimiento/<detector>/` (`yolo26` u `oraculo`): las trayectorias de cada tracker en `<secuencia>/<tracker>.txt` (formato MOT; `video_seguimiento.py` deja a su lado `<tracker>.mp4`) y las métricas en `metricas_<grupo>_<regla>.csv` y `.json` ([qué significa cada columna](#evaluación-del-seguimiento)).
 
 | Tracker | Archivo | Biblioteca | Observaciones |
 |---|---|---|---|
-| ByteTrack | `configs/bytetrack.yaml` | Ultralytics | Tracker del perfil `base`. |
+| ByteTrack | `configs/bytetrack.yaml` | Ultralytics | Tracker de la línea base; comparado en el barrido. |
 | BoT-SORT | `configs/botsort.yaml` | Ultralytics | |
 | BoT-SORT con ReID | `configs/botsort_reid.yaml` | Ultralytics | Compara la apariencia de cada pez con los pesos del detector; requiere la imagen y es más lento. |
 | OC-SORT | `configs/ocsort.yaml` | `trackers` | Requiere Python 3.11 o superior. |
@@ -247,12 +246,12 @@ uv run python scripts/barrido_tracker.py --aplicar
 uv run python scripts/barrido_tracker.py --yaml test
 ```
 
-### Comparar la base con la variante
+### Comparar configuraciones
 
-`tracker comparar` arma una tabla de error de conteo a partir de los `metricas_*.json` de `evaluar-seguimiento`; cada entrada es `ETIQUETA=RUTA.json`, o `ETIQUETA=RUTA.json:TRACKER` si el JSON trae varios trackers. Así se armó [`error_conteo_test.md`](resultados/tablas/error_conteo_test.md):
+`tracker comparar` arma una tabla de error de conteo a partir de los `metricas_*.json` de `evaluar-seguimiento`; cada entrada es `ETIQUETA=RUTA.json`, o `ETIQUETA=RUTA.json:TRACKER` si el JSON trae varios trackers. Así se armó [`error_conteo_test.md`](resultados/tablas/error_conteo_test.md) (la columna Base se reproduce en la rama [`comparacion-yolo11-base`](https://github.com/Bazzty/Fish-Tracker/tree/comparacion-yolo11-base)):
 
 ```bash
-uv run tracker comparar "Base=resultados/seguimiento_test_base.json" "Variante=resultados/seguimiento_test_variante.json" --salida tabla.md
+uv run tracker comparar "Linea simple=resultados/seguimiento_test_yolo26_linea_simple.json:tracker_variante" "Variante=resultados/seguimiento_test_variante.json" --salida tabla.md
 ```
 
 ### Conteo de referencia 📂
@@ -300,8 +299,7 @@ uv run python scripts/preparar_split.py
 
 ```bash
 # Medir el detector (mAP@50, precisión, recall)
-uv run python src/entrenamiento/evaluar.py --split val                      # guarda resultados/evaluacion_val_best.json
-uv run python src/entrenamiento/evaluar.py --pesos weights/yolo26.pt --split val
+uv run python src/entrenamiento/evaluar.py --split val                      # weights/yolo26.pt -> resultados/evaluacion_val_yolo26.json
 uv run python src/entrenamiento/evaluar.py                                  # test: usar una sola vez, al final
 
 # Probar el entrenamiento con 1 época; no toca weights/
@@ -328,7 +326,7 @@ uv run python src/entrenamiento/entrenar.py --modelo yolo26n.pt --datos dat01 --
 
 ## Resultados
 
-Todas las cifras son de secuencias que el modelo no vio al entrenar. Val sirvió para elegir y test se usó una sola vez, al final.
+Todas las cifras son de secuencias que el modelo no vio al entrenar. Val sirvió para elegir y test se usó una sola vez, al final. La columna de la línea base documenta cómo se llegó a la variante; se reproduce en la rama [`comparacion-yolo11-base`](https://github.com/Bazzty/Fish-Tracker/tree/comparacion-yolo11-base).
 
 | Qué | Línea base (YOLO11 + ByteTrack) | Variante (YOLO26 + OC-SORT + dos líneas) | Detalle |
 |---|---|---|---|
@@ -350,7 +348,7 @@ Límite: train, val y test vienen de la misma cámara. Las cifras valen para est
 
 ### Evaluación del seguimiento
 
-`evaluar-seguimiento` compara cada tracker con las trayectorias etiquetadas de DAT-02. Una caja del tracker es el mismo pez que una caja etiquetada cuando se superponen al menos un 50 % (IoU ≥ 0,5). `<grupo>` es el conjunto (`val`, `test`) o las secuencias de `--seq`; `<regla>`, `linea_simple` o `dos_lineas`; `<detector>`, el nombre de los pesos (`yolo26`, `best`) u `oraculo`. Con `--oraculo`, los errores que persisten son del tracker y no del detector.
+`evaluar-seguimiento` compara cada tracker con las trayectorias etiquetadas de DAT-02. Una caja del tracker es el mismo pez que una caja etiquetada cuando se superponen al menos un 50 % (IoU ≥ 0,5). `<grupo>` es el conjunto (`val`, `test`) o las secuencias de `--seq`; `<regla>`, `linea_simple` o `dos_lineas`; `<detector>`, el nombre de los pesos (`yolo26`) u `oraculo`. Con `--oraculo`, los errores que persisten son del tracker y no del detector.
 
 | Columna del CSV | Clave en el JSON | Significado | Deseable |
 |---|---|---|---|

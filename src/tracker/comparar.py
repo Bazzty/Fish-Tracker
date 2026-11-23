@@ -10,7 +10,7 @@ Cada entrada es ETIQUETA=RUTA.json o ETIQUETA=RUTA.json:TRACKER (el nombre del Y
 trae más de un tracker. Las configuraciones deben cubrir las mismas secuencias y la misma referencia.
 
 Uso:
-    uv run tracker comparar "Base=outputs/.../best/metricas_test_linea_simple.json" \\
+    uv run tracker comparar "Linea simple=resultados/seguimiento_test_yolo26_linea_simple.json:tracker_variante" \\
         "Variante=resultados/seguimiento_test_variante.json" --salida resultados/tablas/error_conteo_test.md
 """
 import json

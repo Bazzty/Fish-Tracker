@@ -18,7 +18,6 @@ output_*.mp4
 # Pesos preentrenados descargados por Ultralytics
 /*.pt
 weights/*.pt
-!weights/best.pt
 !weights/yolo26.pt
 # Generados por los scripts
 #   outputs/  <lo ejecutado>/<detector>_<tracker>/<secuencia>/: deteccion, seguimiento, conteo,

@@ -1,7 +1,7 @@
 """Experimentos cortos para elegir el detector YOLO26: 2 modelos x 2 versiones de datos = 4 corridas.
 
 Entrena cada combinación de configs/config.yaml (sección experimentos), la evalúa en validación
-y la compara con el YOLO11 base. Si se corta, se vuelve a ejecutar el mismo comando: las corridas
+y elige el ganador. Si se corta, se vuelve a ejecutar el mismo comando: las corridas
 que ya terminaron no se repiten.
 
 Uso:
@@ -28,12 +28,10 @@ def fila(modelo: str, datos: str, epocas_hechas: int | str, r: dict) -> dict:
 
 
 def correr(cfg: dict, epocas: int | None = None) -> list[dict]:
-    """Entrena y evalúa (en val) cada modelo x datos. La primera fila es el YOLO11 base."""
+    """Entrena y evalúa (en val) cada modelo x datos."""
     e = cfg["experimentos"]
     carpeta_resultados = ruta_abs(cfg["rutas"]["resultados"])
-    # guardar=False: si no, se pisaría resultados/evaluacion_val_best.json (la referencia de YOLO11)
-    base = evaluar(cfg, ruta_abs("weights/best.pt"), "val", guardar=False)
-    filas = [fila("yolo11n (base)", "lab15 (split antiguo)", "-", base)]
+    filas = []
 
     for modelo in e["modelos"]:
         for datos in e["datos"]:
@@ -50,7 +48,7 @@ def correr(cfg: dict, epocas: int | None = None) -> list[dict]:
 
 
 def elegir(filas: list[dict], empate: float) -> dict:
-    """Gana el mayor map50 entre los YOLO26; si otro 'n' queda a menos de `empate`, gana el 'n'
+    """Gana el mayor map50; si otro 'n' queda a menos de `empate`, gana el 'n'
     (más rápido). Entre dos 'n' empatados gana el de mayor map50."""
     yolo26 = [f for f in filas if f["modelo"].startswith("yolo26")]
     mejor = max(yolo26, key=lambda f: f["map50"])

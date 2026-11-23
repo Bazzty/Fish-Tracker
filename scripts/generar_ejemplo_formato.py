@@ -24,7 +24,7 @@ canales = [Canal("canal_1", (100, 0, 500, 720), "Tubo 1"),
 # (id, cuadro de entrada, x del centro, velocidad en px/cuadro, ancho, alto, confianza)
 peces = [(1, 0, 300, 18.0, 120, 160, 0.91), (2, 20, 260, 15.0, 110, 150, 0.84)]
 
-res = Resultados(meta=dict(video="ejemplo_sintetico.mp4", perfil="base", pesos="weights/best.pt", fps=FPS,
+res = Resultados(meta=dict(video="ejemplo_sintetico.mp4", perfil="variante", pesos="weights/yolo26.pt", fps=FPS,
                            ancho=ANCHO, alto=ALTO, cuadros=CUADROS, solo_detectar=False,
                            nota="ejemplo sintético: cajas inventadas, no provienen de ningún video"),
                  canales=canales, conteos={c.id: 0 for c in canales})

@@ -1,7 +1,6 @@
-"""Entrena UNA configuración del detector YOLO (YOLO11 o YOLO26) con los parámetros fijos de configs/config.yaml.
+"""Entrena UNA configuración del detector YOLO26 con los parámetros fijos de configs/config.yaml.
 
 Uso:
-    uv run python src/entrenamiento/entrenar.py --modelo yolo11n.pt --imgsz 640 --lr0 0.01 --nombre prueba --epocas 1
     uv run python src/entrenamiento/entrenar.py --modelo yolo26n.pt --datos dat01 --nombre prueba --epocas 1
 """
 import argparse
@@ -56,7 +55,7 @@ def entrenar(cfg: dict, modelo: str, imgsz: int, lr0: float, nombre: str, epocas
 if __name__ == "__main__":
     p = argparse.ArgumentParser(description="Entrena una configuración del detector.")
     p.add_argument("--config", default=None, help="config.yaml (por defecto configs/config.yaml)")
-    p.add_argument("--modelo", default="yolo11n.pt")
+    p.add_argument("--modelo", default="yolo26n.pt")
     p.add_argument("--imgsz", type=int, default=640)
     p.add_argument("--lr0", type=float, default=0.01)
     p.add_argument("--nombre", default="entrenamiento")

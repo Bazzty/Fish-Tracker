@@ -5,9 +5,9 @@ configuración, para que el mAP sea reproducible. Evalúa sin distinguir clase (
 no cambia nada en el modelo entrenado (una sola clase) y permite evaluar la línea base de COCO.
 
 Uso:
-    uv run python src/entrenamiento/evaluar.py                     # weights/best.pt en test
+    uv run python src/entrenamiento/evaluar.py                     # weights/yolo26.pt en test
     uv run python src/entrenamiento/evaluar.py --split val
-    uv run python src/entrenamiento/evaluar.py --pesos yolo11n.pt --split val    # línea base COCO
+    uv run python src/entrenamiento/evaluar.py --pesos yolo26n.pt --split val    # pesos de COCO, sin entrenar
 """
 import argparse
 import json
@@ -26,7 +26,7 @@ def evaluar(cfg: dict, pesos: str | Path, split: str = "test", imgsz: int | None
 
     ir_a_raiz()
     pesos = Path(pesos)
-    es_base = not pesos.exists() and pesos.parent == Path(".")  # yolo11n.pt de COCO: Ultralytics lo descarga
+    es_base = not pesos.exists() and pesos.parent == Path(".")  # yolo26n.pt de COCO: Ultralytics lo descarga
     if not pesos.exists() and not es_base:
         raise SystemExit(f"[ERROR] No se encontraron los pesos '{pesos}'. Entrene antes con src/entrenamiento/entrenar.py.")
     yolo = YOLO(str(pesos))
@@ -80,12 +80,12 @@ def imprimir(res: dict) -> None:
 if __name__ == "__main__":
     p = argparse.ArgumentParser(description="Evaluación del detector.")
     p.add_argument("--config", default=None)
-    p.add_argument("--pesos", default=None, help="por defecto weights/best.pt")
+    p.add_argument("--pesos", default=None, help="por defecto weights/yolo26.pt")
     p.add_argument("--split", choices=["val", "test"], default="test")
     p.add_argument("--imgsz", type=int, default=None, help="por defecto, el de entrenamiento de los pesos")
     a = p.parse_args()
     cfg = cargar_config(a.config)
-    pesos = a.pesos or ruta_abs(cfg["rutas"]["pesos"]) / "best.pt"
+    pesos = a.pesos or ruta_abs(cfg["rutas"]["pesos"]) / "yolo26.pt"
     if a.pesos and Path(a.pesos).exists():
         pesos = Path(a.pesos).resolve()  # relativa a la carpeta desde donde se ejecuta
     res = evaluar(cfg, pesos, a.split, a.imgsz)

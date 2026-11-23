@@ -1,5 +1,7 @@
 # Error de conteo en test: base vs. variante (T19)
 
+> La línea base (YOLO11, `weights/best.pt`, perfil `base`) ya no está en `main`. Para reproducir lo que usa YOLO11 en este documento, usar la rama [`comparacion-yolo11-base`](https://github.com/Bazzty/Fish-Tracker/tree/comparacion-yolo11-base).
+
 ## Configuraciones
 
 | Configuración | Pesos | Tracker | Regla de conteo | JSON |

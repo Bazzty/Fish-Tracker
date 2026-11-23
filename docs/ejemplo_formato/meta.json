@@ -1,8 +1,8 @@
 {
   "version": 1,
   "video": "ejemplo_sintetico.mp4",
-  "perfil": "base",
-  "pesos": "weights/best.pt",
+  "perfil": "variante",
+  "pesos": "weights/yolo26.pt",
   "fps": 10.0,
   "ancho": 1280,
   "alto": 720,
