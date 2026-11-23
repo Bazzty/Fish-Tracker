@@ -16,6 +16,8 @@ from PySide6.QtWidgets import QWidget
 
 from tracker.canales import Canal
 
+from . import lineas
+
 PALETTE = ["#e6194b", "#3cb44b", "#4363d8", "#f58231", "#911eb4", "#42d4f4", "#f032e6", "#bfef45"]
 HANDLE_PX = 7  # radio de las manillas (px de pantalla)
 LINE_HIT_PX = 6  # tolerancia para agarrar una línea A/B
@@ -63,6 +65,8 @@ class VideoCanvas(QWidget):
         self._rect_start: tuple[float, float] | None = None
         self._cursor: QPointF | None = None
         self._drag: dict | None = None
+        self._overlay: tuple[list, list] | None = None  # (detecciones, trayectorias) del cuadro en vivo
+        self._conteos: dict[str, int] = {}
         self.setMinimumSize(640, 360)
         self.setMouseTracking(True)
         self.setFocusPolicy(Qt.StrongFocus)
@@ -82,6 +86,21 @@ class VideoCanvas(QWidget):
 
     def set_channels(self, channels: list[Canal]) -> None:
         self._channels = channels
+        self.update()
+
+    def set_overlay(self, detecciones: list, trayectorias: list) -> None:
+        """Cajas del cuadro que se está procesando (px del video)."""
+        self._overlay = (detecciones, trayectorias)
+        self.update()
+
+    def clear_overlay(self) -> None:
+        if self._overlay is not None:
+            self._overlay = None
+            self.update()
+
+    def set_conteos(self, conteos: dict) -> None:
+        """Conteo por canal que se muestra junto al nombre del tubo ({} = no mostrar)."""
+        self._conteos = dict(conteos)
         self.update()
 
     def set_active(self, channel_id: str | None) -> None:
@@ -168,6 +187,8 @@ class VideoCanvas(QWidget):
         return None
 
     def _hit_line(self, ch: Canal, pos: QPointF) -> str | None:
+        if not lineas.EDITABLES:  # líneas fijas: no se pueden agarrar
+            return None
         box = self._box(ch)
         if not (box.left() <= pos.x() <= box.right()):
             return None
@@ -222,8 +243,31 @@ class VideoCanvas(QWidget):
             p.drawText(QPointF(box.left() + 5, ya - 4), "A")
             p.drawText(QPointF(box.left() + 5, yb + 13), "B")
 
+            texto = c.nombre or c.id
+            fuente = p.font()
+            if on and c.id in self._conteos:
+                texto += f": {self._conteos[c.id]}"
+                fuente.setBold(True)
+                fuente.setPointSize(12)
+            p.setFont(fuente)
             p.setPen(col)
-            p.drawText(box.topLeft() + QPointF(6, -6), c.nombre or c.id)
+            p.drawText(box.topLeft() + QPointF(6, -6), texto)
+            fuente.setBold(False)
+            fuente.setPointSize(9)
+            p.setFont(fuente)
+
+        if self._overlay is not None:
+            dets, tray = self._overlay
+            p.setBrush(Qt.NoBrush)
+            p.setPen(QPen(QColor(255, 255, 255, 110), 1))
+            for d in dets:
+                p.drawRect(QRectF(self._to_widget((d["x1"], d["y1"])), self._to_widget((d["x2"], d["y2"]))))
+            for t in tray:
+                caja = QRectF(self._to_widget((t["x1"], t["y1"])), self._to_widget((t["x2"], t["y2"])))
+                p.setPen(QPen(color_for(t["canal"]), 2))
+                p.drawRect(caja)
+                p.setPen(QColor("#ffff66"))
+                p.drawText(caja.topLeft() + QPointF(2, -3), f"#{t['id']}")
 
         ch = self._active()
         if ch is not None and ch.id == self._editing_id and not self._drawing:
@@ -233,9 +277,10 @@ class VideoCanvas(QWidget):
                 p.drawRect(QRectF(wp.x() - 5, wp.y() - 5, 10, 10))
             box = self._box(ch)
             cx = box.center().x()
-            p.setBrush(QColor("#ffd400"))
-            for frac in (ch.linea_a, ch.linea_b):
-                p.drawEllipse(QPointF(cx, self._line_y(ch, frac)), 6, 6)
+            if lineas.EDITABLES:
+                p.setBrush(QColor("#ffd400"))
+                for frac in (ch.linea_a, ch.linea_b):
+                    p.drawEllipse(QPointF(cx, self._line_y(ch, frac)), 6, 6)
 
         if self._drawing and self._rect_start is not None and self._cursor is not None:
             a = self._to_widget(self._rect_start)
