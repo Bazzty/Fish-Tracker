@@ -9,6 +9,7 @@ Punto de entrada para `uv run tracker`: ejecutar().
 """
 from __future__ import annotations
 
+import copy
 import json
 import sys
 from pathlib import Path
@@ -17,14 +18,16 @@ import cv2
 from PySide6.QtCore import QEvent, Qt, QTimer
 from PySide6.QtGui import QImage, QKeySequence, QShortcut
 from PySide6.QtWidgets import (
-    QAbstractSpinBox, QApplication, QCheckBox, QFileDialog, QFormLayout, QGroupBox, QHBoxLayout,
-    QLabel, QLineEdit, QListWidget, QListWidgetItem, QMainWindow, QMessageBox, QPushButton, QSlider,
-    QSpinBox, QVBoxLayout, QWidget,
+    QAbstractSpinBox, QApplication, QCheckBox, QComboBox, QFileDialog, QFormLayout, QGroupBox, QHBoxLayout,
+    QLabel, QLineEdit, QListWidget, QListWidgetItem, QMainWindow, QMessageBox, QProgressBar, QPushButton,
+    QSlider, QSpinBox, QVBoxLayout, QWidget,
 )
 
 from tracker.canales import Canal, cargar_canales, guardar_canales
 
+from . import lineas, proceso
 from .canvas import VideoCanvas, color_for, num_de
+from .proceso import GPU_NO_SOPORTADA, HiloProceso, descripcion_modelo, nombre_modelo
 from .resultados import ResultadosWindow
 
 # Resultados de ejemplo del repo (formato común): <repo>/docs/ejemplo_formato
@@ -48,6 +51,10 @@ class MainWindow(QMainWindow):
         self.channels: list[Canal] = []
         self._updating_list = False
         self._cfg_updating = False
+        self.conteos: dict[str, int] = {}  # conteo por canal (en vivo y final)
+        self.resultado = None  # tracker.pipeline.Resultados del último procesamiento
+        self._exportado = False
+        self.hilo: HiloProceso | None = None
         self.current = 0
         self.fps = 25.0
         self.timer = QTimer(self)
@@ -116,8 +123,8 @@ class MainWindow(QMainWindow):
         form = QFormLayout()
         form.addRow("Nombre", self.ed_nombre)
         form.addRow(self.chk_activo)
-        form.addRow("Línea A (entrada)", self.sp_a)
-        form.addRow("Línea B (salida)", self.sp_b)
+        form.addRow("Línea A (entrada)" + ("" if lineas.EDITABLES else " · fija"), self.sp_a)
+        form.addRow("Línea B (salida)" + ("" if lineas.EDITABLES else " · fija"), self.sp_b)
         form.addRow("X", self.sp_x)
         form.addRow("Y", self.sp_y)
         form.addRow("Ancho", self.sp_w)
@@ -162,9 +169,36 @@ class MainWindow(QMainWindow):
         central.setLayout(root)
         self.setCentralWidget(central)
 
-        menu = self.menuBar().addMenu("Resultados")
-        menu.addAction("Abrir resultados…").triggered.connect(self.abrir_resultados)
-        menu.addAction("Resultados de ejemplo").triggered.connect(self.abrir_ejemplo)
+
+        barra = self.addToolBar("Procesamiento")
+        barra.setMovable(False)
+        self.lbl_modelo = QLabel(f" Modelo: {nombre_modelo()} ")
+        self.lbl_modelo.setToolTip(f"{descripcion_modelo()}\nPerfil '{proceso.PERFIL}' "
+                                   f"(configs/perfiles/{proceso.PERFIL}.yaml)")
+        barra.addWidget(self.lbl_modelo)
+        barra.addWidget(QLabel("  Dispositivo: "))
+        self.cb_disp = QComboBox()
+        self.cb_disp.addItems(["Automático (GPU si sirve)", "CPU"])
+        self.cb_disp.setToolTip("Si tu GPU es antigua y falla, elige CPU (más lento)")
+        barra.addWidget(self.cb_disp)
+        self.btn_proc = QPushButton("⚙ Procesar video")
+        self.btn_proc.setToolTip("Detecta, sigue y cuenta los peces de los tubos marcados (✔)")
+        self.btn_proc.clicked.connect(self.toggle_proceso)
+        barra.addWidget(self.btn_proc)
+        self.btn_exportar = QPushButton("Exportar resultados…")
+        self.btn_exportar.setToolTip("Guarda el formato común (meta, canales, detecciones, trayectorias, conteos)")
+        self.btn_exportar.setEnabled(False)
+        self.btn_exportar.clicked.connect(self.exportar)
+        barra.addWidget(self.btn_exportar)
+        self.btn_ver = QPushButton("Ver resultados")
+        self.btn_ver.setToolTip("Muestra el último procesamiento; si no hay uno, deja abrir una carpeta de resultados "
+                                "(p. ej. docs/ejemplo_formato)")
+        self.btn_ver.clicked.connect(self.ver_resultado)
+        barra.addWidget(self.btn_ver)
+        self.progreso = QProgressBar()
+        self.progreso.setMaximumWidth(280)
+        self.progreso.setVisible(False)
+        self.statusBar().addPermanentWidget(self.progreso)
         self.res_win = None
         self._load_cfg()
         self.statusBar().showMessage("Abre un video para comenzar.")
@@ -209,7 +243,7 @@ class MainWindow(QMainWindow):
                 f"No se pudo abrir o leer el video:\n{path}\n\nVerifica que el archivo exista y sea un video válido.",
             )
             return False
-        if not self._confirm_discard("Abrir el video de todos modos"):
+        if not self._confirm_discard("Abrir el video de todos modos") or not self._confirm_resultado():
             cap.release()
             return False
         self.pause()
@@ -226,6 +260,7 @@ class MainWindow(QMainWindow):
         n = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
         self.canvas.set_editing(None)
         self.channels = []
+        self._reset_resultados()
         self._refresh_list()
         self.slider.blockSignals(True)
         self.slider.setRange(0, max(n - 1, 0))
@@ -247,10 +282,15 @@ class MainWindow(QMainWindow):
             self.current = idx
             self._display(frame, idx, self.slider.maximum() + 1)
 
-    def _display(self, frame, idx: int, total: int) -> None:
+    @staticmethod
+    def _a_qimage(frame) -> QImage:
         rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         h, w, _ = rgb.shape
-        self.canvas.set_frame(QImage(rgb.data, w, h, 3 * w, QImage.Format_RGB888).copy())
+        return QImage(rgb.data, w, h, 3 * w, QImage.Format_RGB888).copy()
+
+    def _display(self, frame, idx: int, total) -> None:
+        self.canvas.clear_overlay()  # las cajas son de un cuadro procesado; al navegar ya no corresponden
+        self.canvas.set_frame(self._a_qimage(frame))
         self.frame_label.setText(f"Cuadro: {idx + 1}/{total}")
 
     # ---- reproducción ----
@@ -304,12 +344,14 @@ class MainWindow(QMainWindow):
 
     def _on_channel_drawn(self, caja: tuple) -> None:
         n = max((num_de(c.id) for c in self.channels), default=0) + 1
-        self.channels.append(Canal(f"canal_{n}", caja, f"Tubo {n}"))
+        self.channels.append(Canal(f"canal_{n}", caja, f"Tubo {n}", linea_a=lineas.LINEA_A, linea_b=lineas.LINEA_B))
         self._refresh_list(keep_row=len(self.channels) - 1)
         self.canvas.set_editing(f"canal_{n}")  # el tubo nuevo queda editable
         self.statusBar().showMessage(
-            f"Tubo {n} creado. Ajústalo con los cuadritos blancos o con el panel; mueve las líneas A y B con los "
-            "círculos amarillos. Cuando esté listo, Enter o clic fuera."
+            f"Tubo {n} creado. Ajústalo con los cuadritos blancos o con el panel"
+            + ("; mueve las líneas A y B con los círculos amarillos." if lineas.EDITABLES
+               else " (las líneas A y B son fijas).")
+            + " Cuando esté listo, Enter o clic fuera."
         )
 
     def _on_canvas_click(self, channel_id: str) -> None:
@@ -322,7 +364,7 @@ class MainWindow(QMainWindow):
         self._updating_list = True
         self.list.clear()
         for c in self.channels:
-            item = QListWidgetItem(c.nombre or c.id)
+            item = QListWidgetItem(self._item_texto(c))
             item.setFlags(item.flags() | Qt.ItemIsUserCheckable)
             item.setCheckState(Qt.Checked if c.activo else Qt.Unchecked)
             item.setForeground(color_for(c.id))
@@ -332,6 +374,19 @@ class MainWindow(QMainWindow):
             self.list.setCurrentRow(min(keep_row, len(self.channels) - 1))
         self.canvas.set_channels(self.channels)
         self._sync_active()
+
+    def _item_texto(self, c: Canal) -> str:
+        n = self.conteos.get(c.id)
+        return f"{c.nombre or c.id}  ·  {n}" if (c.activo and n is not None) else (c.nombre or c.id)
+
+    def _push_conteos(self) -> None:
+        """Refleja self.conteos en el video y en la lista de tubos."""
+        self.canvas.set_conteos(self.conteos)
+        self._updating_list = True
+        for i, c in enumerate(self.channels):
+            if i < self.list.count():
+                self.list.item(i).setText(self._item_texto(c))
+        self._updating_list = False
 
     def _on_item_changed(self, item: QListWidgetItem) -> None:
         if self._updating_list:
@@ -391,6 +446,9 @@ class MainWindow(QMainWindow):
         self._cfg_updating = True
         for w in self._cfg_widgets:
             w.setEnabled(ch is not None)
+        if not lineas.EDITABLES:  # las líneas A y B se ven, pero no se editan
+            self.sp_a.setEnabled(False)
+            self.sp_b.setEnabled(False)
         if ch is None:
             self.ed_nombre.clear()
             self.chk_activo.setChecked(False)
@@ -421,7 +479,7 @@ class MainWindow(QMainWindow):
             return
         ch.nombre = nombre
         self._updating_list = True
-        self.list.item(self.list.currentRow()).setText(nombre)
+        self.list.item(self.list.currentRow()).setText(self._item_texto(ch))
         self._updating_list = False
         self.canvas.update()
 
@@ -437,7 +495,7 @@ class MainWindow(QMainWindow):
 
     def _on_linea_a(self, v: int) -> None:
         ch = self._current_channel()
-        if self._cfg_updating or ch is None:
+        if self._cfg_updating or ch is None or not lineas.EDITABLES:
             return
         if v > round(ch.linea_b * 100) - MIN_GAP_PCT:
             self.statusBar().showMessage("La línea A debe quedar arriba de la B.")
@@ -448,7 +506,7 @@ class MainWindow(QMainWindow):
 
     def _on_linea_b(self, v: int) -> None:
         ch = self._current_channel()
-        if self._cfg_updating or ch is None:
+        if self._cfg_updating or ch is None or not lineas.EDITABLES:
             return
         if v < round(ch.linea_a * 100) + MIN_GAP_PCT:
             self.statusBar().showMessage("La línea B debe quedar debajo de la A.")
@@ -526,13 +584,189 @@ class MainWindow(QMainWindow):
                 f"{self.frame_size[0]}x{self.frame_size[1]}. No se cargaron.",
             )
             return False
-        if not self._confirm_discard("Cargar los canales del archivo"):
+        if not self._confirm_discard("Cargar los canales del archivo") or not self._confirm_resultado():
             return False
         self.canvas.set_editing(None)
         self.channels = channels
+        self._reset_resultados()
         self._refresh_list()
-        self.statusBar().showMessage(f"Cargados {len(channels)} tubos (todos fijos).")
+        distintas = [c for c in channels
+                     if abs(c.linea_a - lineas.LINEA_A) > 0.005 or abs(c.linea_b - lineas.LINEA_B) > 0.005]
+        aviso = (f" Traen sus propias líneas A/B (p. ej. {distintas[0].linea_a:.0%}/{distintas[0].linea_b:.0%}): "
+                 "se respetan tal cual y no se pueden editar." if distintas and not lineas.EDITABLES else "")
+        self.statusBar().showMessage(f"Cargados {len(channels)} tubos (todos fijos).{aviso}")
         return True
+
+    # ---- procesamiento en vivo (T15) ----
+    def _reset_resultados(self) -> None:
+        self.conteos = {}
+        self.resultado = None
+        self._exportado = False
+        self.btn_exportar.setEnabled(False)
+        self.canvas.clear_overlay()
+        self.canvas.set_conteos({})
+
+    def _confirm_resultado(self) -> bool:
+        """Avisa si hay un resultado procesado que todavía no se exportó."""
+        if self.resultado is None or self._exportado:
+            return True
+        r = QMessageBox.question(
+            self, "Resultado sin exportar",
+            "Hay un resultado procesado que no se ha exportado y se perderá.\n¿Continuar de todos modos?",
+        )
+        return r == QMessageBox.Yes
+
+    def toggle_proceso(self) -> None:
+        if self.hilo is not None:  # ya está corriendo: cancelar
+            self.hilo.cancelar()
+            self.btn_proc.setEnabled(False)
+            self.statusBar().showMessage("Cancelando…")
+            return
+        self.iniciar_proceso()
+
+    def iniciar_proceso(self) -> bool:
+        if self.video_path is None:
+            QMessageBox.warning(self, "Sin video", "Abre un video antes de procesar.")
+            return False
+        if not self.channels:
+            QMessageBox.warning(self, "Sin tubos", "Dibuja al menos un tubo sobre el video antes de procesar.")
+            return False
+        if not self.selected_channels():
+            QMessageBox.warning(self, "Ningún tubo seleccionado",
+                                "Marca (✔) al menos un tubo para analizar. Los tubos sin marcar se ignoran.")
+            return False
+        if not self._confirm_resultado():
+            return False
+        self.canvas.set_editing(None)
+        self.pause()
+        perfil = proceso.PERFIL
+        self.resultado, self._exportado = None, False
+        self.btn_exportar.setEnabled(False)
+        self.conteos = {c.id: 0 for c in self.selected_channels()}  # un tubo vacío = 0
+        self._push_conteos()
+        self.hilo = HiloProceso(str(self.video_path), copy.deepcopy(self.channels), perfil, self,
+                                dispositivo="cpu" if self.cb_disp.currentIndex() == 1 else "auto")
+        self.hilo.avance.connect(self._on_avance)
+        self.hilo.terminado.connect(self._on_terminado)
+        self.hilo.fallo.connect(self._on_fallo)
+        self.hilo.cancelado.connect(self._on_cancelado)
+        self._set_procesando(True)
+        self.progreso.setRange(0, 0)  # animación mientras carga el modelo
+        self.statusBar().showMessage(f"Cargando el modelo ({descripcion_modelo(perfil)})…")
+        self.hilo.start()
+        return True
+
+    def _set_procesando(self, activo: bool) -> None:
+        self.centralWidget().setEnabled(not activo)  # nada de editar mientras corre
+        self.cb_disp.setEnabled(not activo)
+        self.btn_ver.setEnabled(not activo)
+        self.progreso.setVisible(activo)
+        self.btn_proc.setEnabled(True)
+        self.btn_proc.setText("✖ Cancelar" if activo else "⚙ Procesar video")
+
+    def _fin_proceso(self) -> None:
+        if self.hilo is not None:
+            self.hilo.wait()
+            self.hilo.deleteLater()
+            self.hilo = None
+        self._set_procesando(False)
+
+    def _on_avance(self, av) -> None:
+        if av.total and self.progreso.maximum() == 0:
+            self.progreso.setRange(0, av.total)
+        if av.total:
+            self.progreso.setValue(min(av.cuadro + 1, av.total))
+        self.canvas.set_frame(self._a_qimage(av.imagen))
+        self.canvas.set_overlay(av.detecciones, av.trayectorias)
+        self.conteos = dict(av.conteos)
+        self._push_conteos()
+        total = av.total or "?"
+        self.frame_label.setText(f"Cuadro: {av.cuadro + 1}/{total}")
+        self.statusBar().showMessage(
+            f"Procesando… cuadro {av.cuadro + 1}/{total} · {sum(self.conteos.values())} peces contados")
+
+    def _on_terminado(self, res) -> None:
+        self._fin_proceso()
+        self.resultado, self._exportado = res, False
+        self.conteos = {k: int(v) for k, v in res.conteos.items()}
+        self._push_conteos()
+        self.btn_exportar.setEnabled(True)
+        self.statusBar().showMessage(
+            f"Listo: {sum(self.conteos.values())} peces contados en {len(self.conteos)} tubo(s). "
+            "Puedes ver o exportar los resultados.")
+
+    def _on_fallo(self, mensaje: str) -> None:
+        self._fin_proceso()
+        self.conteos = {}
+        self._push_conteos()
+        self.statusBar().showMessage("No se pudo procesar el video.")
+        if GPU_NO_SOPORTADA in mensaje:
+            self.cb_disp.setCurrentIndex(1)  # deja listo el reintento en CPU
+        QMessageBox.critical(self, "No se pudo procesar", mensaje)
+
+    def _on_cancelado(self) -> None:
+        self._fin_proceso()
+        self.conteos = {}
+        self._push_conteos()
+        self.canvas.clear_overlay()
+        self.statusBar().showMessage("Procesamiento cancelado.")
+
+    def ver_resultado(self) -> None:
+        if self.resultado is None:  # nada procesado todavía: abrir una carpeta guardada
+            self.abrir_resultados()
+            return
+        self.res_win = ResultadosWindow(self.resultado, "último procesamiento", self)
+        self.res_win.show()
+
+    # ---- exportar (T17) ----
+    def exportar(self) -> None:
+        if self.resultado is None:
+            QMessageBox.warning(self, "Sin resultados", "Procesa un video antes de exportar.")
+            return
+        base = QFileDialog.getExistingDirectory(self, "Elegir la carpeta donde guardar los resultados")
+        if base:
+            self.exportar_en(base)
+
+    def exportar_en(self, base: str) -> bool:
+        """Escribe el formato común en <base>/<video>_<perfil>/ y lo valida."""
+        from tracker import formato
+
+        res = self.resultado
+        nombre = f"{Path(res.meta.get('video', 'video')).stem}_{res.meta.get('perfil', 'perfil')}"
+        carpeta = Path(base) / nombre
+        if carpeta.is_dir() and any(carpeta.iterdir()):
+            r = QMessageBox.question(self, "Carpeta existente",
+                                     f"La carpeta ya tiene archivos:\n{carpeta}\n¿Reemplazar los del formato común?")
+            if r != QMessageBox.Yes:
+                return False
+        try:
+            formato.exportar(res, carpeta)
+        except ValueError as e:
+            QMessageBox.critical(self, "No se pudo exportar", str(e))
+            return False
+        except OSError as e:
+            QMessageBox.critical(self, "No se pudo escribir en la carpeta",
+                                 f"{e}\n\nElige otra carpeta donde tengas permiso de escritura.")
+            return False
+        errores = formato.validar(carpeta)
+        if errores:
+            QMessageBox.warning(self, "Exportado, pero con problemas",
+                                "Los archivos se escribieron, pero no cumplen el formato común:\n- " + "\n- ".join(errores))
+            return False
+        self._exportado = True
+        self.statusBar().showMessage(f"Exportado y validado: {carpeta}")
+        QMessageBox.information(self, "Exportado",
+                                f"Resultados exportados y validados contra el formato común ✔\n\n{carpeta}")
+        return True
+
+    def closeEvent(self, event) -> None:
+        if self.hilo is None and not self._confirm_resultado():
+            event.ignore()
+            return
+        if self.hilo is not None:  # no dejar el hilo corriendo al cerrar
+            self.hilo.cancelar()
+            self.hilo.wait()  # la cancelación solo se nota entre cuadros: esperar a que termine
+        super().closeEvent(event)
 
     # ---- resultados (conteo por canal y diagnóstico del seguimiento) ----
     def abrir_resultados(self) -> None:
