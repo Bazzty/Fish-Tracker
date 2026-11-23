@@ -1,10 +1,12 @@
 """Arma un video .mp4 con el seguimiento dibujado: caja e ID de cada pez y la ruta que recorre.
 
-Lee las trayectorias que deja `uv run tracker evaluar-seguimiento`. Cada ID tiene su color;
-si un pez cambia de color a mitad de camino, ahí el tracker le dio un ID nuevo (IDSW).
+Lee las trayectorias que deja `uv run tracker evaluar-seguimiento` en
+outputs/evaluacion_seguimiento/<detector>/<secuencia>/<tracker>.txt y deja el video al lado (<tracker>.mp4).
+<detector> sale del perfil (base = best, variante = yolo26) u 'oraculo'. Cada ID tiene su color; si un pez
+cambia de color a mitad de camino, ahí el tracker le dio un ID nuevo (cambio de ID).
 
 Uso:
-    uv run python scripts/video_seguimiento.py seq_00015                       # bytetrack, perfil base
+    uv run python scripts/video_seguimiento.py seq_00015                       # tracker de la variante (OC-SORT)
     uv run python scripts/video_seguimiento.py seq_00015 --tracker botsort
     uv run python scripts/video_seguimiento.py seq_00015 --oraculo
 """
@@ -19,8 +21,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 import cv2  # noqa: E402
 import numpy as np  # noqa: E402
 
-from comun import VideoH264, cargar_config, ruta_abs  # noqa: E402
+from comun import VideoH264, cargar_config  # noqa: E402
 from tracker.evaluar_seguimiento import VACIO, cuadros_seq, leer_mot  # noqa: E402
+from tracker.pipeline import cargar_perfil  # noqa: E402
+from tracker.salidas import carpeta, nombre_detector  # noqa: E402
 
 
 def color(i: int) -> tuple[int, int, int]:
@@ -30,8 +34,9 @@ def color(i: int) -> tuple[int, int, int]:
 
 p = argparse.ArgumentParser()
 p.add_argument("seq")
-p.add_argument("--tracker", default="bytetrack", help="nombre del YAML usado (bytetrack, botsort)")
-p.add_argument("--perfil", default="base")
+p.add_argument("--tracker", default="tracker_variante",
+               help="nombre del YAML evaluado (tracker_variante por defecto; bytetrack, botsort, ocsort, ...)")
+p.add_argument("--perfil", default="variante", help="el de la evaluación: indica el detector (por defecto variante)")
 p.add_argument("--oraculo", action="store_true", help="trayectorias de la corrida con --oraculo")
 p.add_argument("--fps", type=float, default=None, help="por defecto conteo.fps_cuadros de config.yaml")
 p.add_argument("--config", default=None)
@@ -39,16 +44,15 @@ p.add_argument("--salida", default=None)
 a = p.parse_args()
 
 cfg = cargar_config(a.config)
-corrida = ruta_abs(cfg["rutas"]["salidas"]) / "evaluacion_seguimiento" / (a.perfil + ("_oraculo" if a.oraculo else ""))
-ruta_pred = corrida / "trayectorias" / a.tracker / f"{a.seq}.txt"
+corrida = carpeta(cfg, "evaluacion_seguimiento", nombre_detector(cargar_perfil(a.perfil), a.oraculo), a.seq)
+ruta_pred = corrida / f"{a.tracker}.txt"
 if not ruta_pred.exists():
     sys.exit(f"[ERROR] No existe {ruta_pred}. Ejecute antes: uv run tracker evaluar-seguimiento --seq {a.seq}"
              + (" --oraculo" if a.oraculo else ""))
 pred = leer_mot(ruta_pred)
 cuadros = cuadros_seq(cfg, a.seq)
 fps = a.fps or float(cfg["conteo"]["fps_cuadros"])
-salida = Path(a.salida) if a.salida else ruta_abs(cfg["rutas"]["salidas"]) / "videos" / (
-    f"{a.seq}_{a.tracker}" + ("_oraculo" if a.oraculo else "") + ".mp4")
+salida = Path(a.salida) if a.salida else corrida / f"{a.tracker}.mp4"  # junto a sus trayectorias
 salida.parent.mkdir(parents=True, exist_ok=True)
 
 alto, ancho = cv2.imread(str(cuadros[0][1])).shape[:2]

@@ -17,6 +17,7 @@ from comun import cargar_config, leer_yaml, ruta_abs
 from tracker.canales import Canal, canal_de
 
 PERFILES = "configs/perfiles"
+PERFIL_POR_DEFECTO = "variante"  # YOLO26 + OC-SORT (ganador del barrido) + conteo de dos líneas
 
 
 @dataclass
@@ -43,10 +44,10 @@ class Resultados:
 
 
 def cargar_perfil(perfil: str | Path | dict | None = None) -> dict:
-    """Perfil por nombre ('base', 'variante'), por ruta a un YAML o ya cargado. Por defecto, 'base'."""
+    """Perfil por nombre ('variante', 'base'), por ruta a un YAML o ya cargado. Por defecto, 'variante'."""
     if isinstance(perfil, dict):
         return perfil
-    nombre = str(perfil or "base")
+    nombre = str(perfil or PERFIL_POR_DEFECTO)
     ruta = Path(nombre) if nombre.endswith(".yaml") else ruta_abs(f"{PERFILES}/{nombre}.yaml")
     if not ruta.exists():
         raise FileNotFoundError(f"No existe el perfil '{nombre}' ({ruta})")
@@ -100,7 +101,7 @@ def procesar_iter(video: str | Path, canales: list[Canal], perfil=None, solo_det
             if not ok:
                 break
             dets = detector.detectar(img)
-            tray = seguidor.actualizar(cuadro, dets) if seguidor else []
+            tray = seguidor.actualizar(cuadro, dets, img) if seguidor else []
             eventos = contador.actualizar(cuadro, tray) if contador else []
             conteos = contador.conteos() if contador else {c.id: 0 for c in activos}
             yield Avance(cuadro, info["cuadros"], cuadro / info["fps"], img, dets, tray, eventos, conteos)
