@@ -1,5 +1,7 @@
 # Línea base de detección: YOLO11 (Lab 15) en la validación nueva
 
+> La línea base (YOLO11, `weights/best.pt`, perfil `base`) ya no está en `main`. Para reproducir lo que usa YOLO11 en este documento, usar la rama [`comparacion-yolo11-base`](https://github.com/Bazzty/Fish-Tracker/tree/comparacion-yolo11-base).
+
 Pesos `weights/best.pt` (YOLO11n, imgsz 640, sha256 `c384a62e…a2f8`), sin reentrenar.
 Validación: 8 secuencias de DAT-01 (`configs/split.yaml`), que el modelo nunca vio (se entrenó solo con las secuencias del Lab 15).
 

@@ -2,7 +2,7 @@
 
 Valores INICIALES de los tubos nuevos; se pueden editar (EDITABLES = True).
 
-Calibrada con seq_0005 (6 peces, perfil base, 52 cuadros). Con la regla de la línea base, un pez cuenta
+Calibrada con seq_0005 (6 peces, 52 cuadros), con la regla de línea simple: un pez cuenta
 si se ve sobre la línea A y después en A o más abajo. En esa secuencia:
   - los peces empiezan a seguirse (ID estable) entre el 10 % y el 43 % del alto del tubo;
   - los peces terminan entre el 67 % y el 95 % del alto;

@@ -1,5 +1,7 @@
 # Caso difícil: pez perdido justo al cruzar la línea (seq_00015)
 
+> La línea base (YOLO11, `weights/best.pt`, perfil `base`) ya no está en `main`. Para reproducir lo que usa YOLO11 en este documento, usar la rama [`comparacion-yolo11-base`](https://github.com/Bazzty/Fish-Tracker/tree/comparacion-yolo11-base).
+
 Secuencia de validación seq_00015, cuadros 84 a 89 del video armado con `scripts/secuencia_a_video.py` (cuadros consecutivos, numerados desde 0). Es el caso que se vio primero en el diagnóstico de YOLO11 (T11).
 
 ## Qué pasa

@@ -17,7 +17,7 @@ Una ejecución = una carpeta con 5 archivos, UTF-8, CSV con encabezado y separad
 
 ## `meta.json`
 ```json
-{"version": 1, "video": "ejemplo_sintetico.mp4", "perfil": "base", "pesos": "weights/best.pt",
+{"version": 1, "video": "ejemplo_sintetico.mp4", "perfil": "variante", "pesos": "weights/yolo26.pt",
  "fps": 10.0, "ancho": 1280, "alto": 720, "cuadros": 60, "solo_detectar": false,
  "conteos": {"canal_1": 2, "canal_2": 0}, "total": 2}
 ```

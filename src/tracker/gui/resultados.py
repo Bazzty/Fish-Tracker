@@ -185,9 +185,9 @@ class ResultadosWindow(QDialog):
             return w
         nombres = {c.id: (c.nombre or c.id) for c in self.res.canales}
         textos = [
-            "<b>Regla del perfil base:</b> un pez se cuenta cuando se ve <b>por encima</b> de la línea A y después "
-            "en la línea o más abajo. Si un ID nace ya bajo la línea A, o se pierde antes de llegar, <b>no se cuenta</b>: "
-            "el conteo puede salir 0 aunque pasen peces. Los peces deben ir de arriba hacia abajo."
+            "<b>Regla de conteo (A → B):</b> un pez se cuenta cuando se ve <b>por encima</b> de la línea A y después "
+            "llega a la línea B. Si un ID nace ya bajo la línea A, o se pierde antes de llegar, <b>no se cuenta</b> "
+            "(salvo que herede el estado de un ID perdido cerca). Los peces deben ir de arriba hacia abajo."
         ]
         for cid, g in d.guias.items():
             if g.n == 0:

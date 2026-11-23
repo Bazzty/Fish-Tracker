@@ -12,7 +12,7 @@ rutas:
   split: configs/split.yaml           # partición por secuencia completa
   conteo_real: configs/conteo_real.yaml
   resultados: resultados              # entrenamientos, evaluaciones y tablas
-  pesos: weights                      # weights/best.pt = configuración elegida
+  pesos: weights                      # weights/yolo26.pt = detector elegido
   salidas: outputs                    # videos anotados y eventos de conteo (no se versiona)
 
 # Entrenamiento completo (el final). Los experimentos cortos usan la sección experimentos.
@@ -30,7 +30,7 @@ experimentos:
   datos: [dat01, lab15_dat01]   # A: solo DAT-01 · B: Lab 15 + DAT-01 (ver escribir_data_yaml en src/comun.py)
   epocas: 30
   paciencia: 10
-  imgsz: 640                    # igual que el YOLO11 base (weights/best.yaml)
+  imgsz: 640
   lr0: 0.001
   empate_map50: 0.01            # diferencias menores son empate: gana el modelo más chico
 
@@ -42,15 +42,7 @@ evaluacion:
 
 # Seguimiento y conteo.
 conteo:
-  linea: 0.50                # fracción del alto desde arriba; se elige en validación entre las candidatas.
-                             # También es la línea A de la referencia de conteo (scripts/conteo_referencia.py)
-  lineas_candidatas: [0.40, 0.50, 0.60]
-  conf_detector: 0.10        # ByteTrack usa cajas de baja confianza (entre 0.10 y 0.25) en su segunda asociación
-  iou_nms: 0.7
-  tracker: configs/bytetrack.yaml
-  match_thresh: 0.8          # asociación de ByteTrack: une cajas con IoU > 1 - match_thresh (0.8 = por defecto)
-  match_thresh_candidatos: [0.8, 0.9, 0.95]   # se elige en validación junto con la línea
-  salto_reinicio: 10         # si entre dos cuadros faltan más de 10 números, se reinicia el seguimiento
+  linea: 0.50                # fracción del alto desde arriba: línea A de la referencia de conteo (scripts/conteo_referencia.py)
   fps_cuadros: 10            # fps del video anotado armado desde una carpeta de cuadros
 
 criterio:

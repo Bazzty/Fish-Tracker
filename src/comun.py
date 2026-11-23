@@ -99,10 +99,6 @@ def secuencias(cfg: dict, conjunto: str) -> list[str]:
     return list(split[conjunto])
 
 
-def conteo_real(cfg: dict) -> dict:
-    return leer_yaml(ruta_abs(cfg["rutas"]["conteo_real"]))["conteo_real"]
-
-
 def dir_datos(cfg: dict) -> Path:
     return ruta_abs(cfg["rutas"]["datos"])
 
