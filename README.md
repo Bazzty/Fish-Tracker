@@ -5,111 +5,166 @@ USS-ICIFH001 · Inteligencia Artificial · Lab 15 (base) y Solemne 3 (Tracker, c
 
 ## Tracker (Solemne 3)
 
-Aplicación de escritorio que abre un video, deja marcar los tubos (canales) y cuenta los salmones de cada uno sin contar dos veces el mismo pez. Intercambia archivos con el Validador en un [formato común](docs/formato_comun.md). Plan, responsables y estado: [`docs/plan.md`](docs/plan.md). Lista corta de comandos: [`docs/comandos.md`](docs/comandos.md).
+Aplicación de escritorio que, a partir de un video, permite marcar los tubos (canales) y contar los salmones que pasan por cada uno sin contar dos veces el mismo pez. Los resultados se intercambian con el Validador mediante un [formato común](docs/formato_comun.md).
 
-### Cómo ejecutarlo
+Documentos relacionados:
 
-Todo se corre desde la raíz del repositorio. Los datos no se versionan: ver [Datos de la Solemne 3](#datos-de-la-solemne-3).
+- [`docs/comandos.md`](docs/comandos.md): referencia de comandos y del archivo de tubos.
+- [`docs/metricas.md`](docs/metricas.md): significado de cada métrica y de cada campo de los resultados.
+- [`docs/plan.md`](docs/plan.md): tareas, responsables y estado.
 
-**1. Instalar.** FFmpeg viene incluido (`imageio-ffmpeg`): los videos salen en H.264 sin instalar nada más.
+### Instalación
+
+Los comandos se ejecutan desde la raíz del repositorio. FFmpeg se instala como dependencia del proyecto (`imageio-ffmpeg`), por lo que los videos se generan en H.264 sin pasos adicionales.
 
 ```powershell
 uv sync
 ```
 
-**2. Preparar el entrenamiento (split y `data.yaml`).** Lee `configs/split.yaml`, la única fuente del split (ahí está explicado cómo se eligió), y escribe `runs/data_dat01.yaml` (train solo DAT-01) y `runs/data_lab15_dat01.yaml` (train Lab 15 + DAT-01), con el mismo val y test, más la tabla [`resultados/tablas/cuadros_por_split.md`](resultados/tablas/cuadros_por_split.md). No hay azar: siempre sale lo mismo.
+### Perfiles
+
+Un perfil define el detector, el tracker y la regla de conteo. Se selecciona con `--perfil`; si se omite, se usa `variante`.
+
+| Perfil | Detector | Tracker | Regla de conteo | Uso |
+|---|---|---|---|---|
+| `variante` (por defecto) | YOLO26 (`weights/yolo26.pt`) | OC-SORT (`configs/tracker_variante.yaml`) | Dos líneas | Configuración final del sistema. |
+| `base` | YOLO11 (`weights/best.pt`) | ByteTrack (`configs/bytetrack.yaml`) | Línea simple | Línea base del plan, para comparar. |
+
+La regla de conteo puede cambiarse sin cambiar de perfil con `--conteo linea_simple` o `--conteo dos_lineas`, y el tracker con `--tracker configs/<tracker>.yaml`.
+
+### Reglas de conteo
+
+- **Línea simple.** Un pez, identificado por su canal y su ID, se cuenta una sola vez: cuando el centro de su caja pasa de estar sobre la línea A del tubo a estar en ella o bajo ella. Un pez que sube, o que aparece por primera vez bajo la línea, no se cuenta.
+- **Dos líneas (histéresis).** El pez queda armado al verse sobre la línea A y se cuenta al alcanzar la línea B; así, una caja que oscila en torno a una línea no suma de más. Además:
+  - no se cuentan las trayectorias vistas en menos de 5 cuadros;
+  - un ID nuevo que aparece donde debería estar otro perdido recientemente (según su última posición y su velocidad) hereda su estado, de modo que un pez fragmentado por el tracker no se pierde ni se cuenta dos veces.
+
+Los parámetros se definen en `configs/perfiles/variante.yaml`, y la especificación completa, en el [formato común](docs/formato_comun.md#regla-de-conteo).
+
+### Flujo de trabajo
+
+#### 1. Preparar los datos de entrenamiento
+
+`scripts/preparar_split.py` lee `configs/split.yaml`, única fuente de la partición (el criterio de selección está documentado en ese archivo), y genera dos archivos de datos con la misma validación y la misma prueba:
+
+- `runs/data_dat01.yaml`: entrenamiento solo con DAT-01.
+- `runs/data_lab15_dat01.yaml`: entrenamiento con Lab 15 y DAT-01.
+
+También genera la tabla [`resultados/tablas/cuadros_por_split.md`](resultados/tablas/cuadros_por_split.md). El resultado es determinista: con los mismos datos, siempre es el mismo.
 
 ```powershell
 uv run python scripts/preparar_split.py
 ```
 
-**3. Contar los salmones de un video.** Arma un video desde `data/` (no hay videos originales en el repo), lo procesa (detector → seguimiento por tubo → conteo) y deja el video anotado; al terminar imprime dónde quedó cada archivo. Si la secuencia tiene DAT-02, `conteo.json` trae también el conteo real y el error por tubo.
+#### 2. Contar los salmones de un video
+
+Como el repositorio no incluye los videos originales, primero se arma uno a partir de las imágenes de `data/`. Luego, `procesar` ejecuta el detector, el seguimiento por tubo y el conteo, genera el video anotado e imprime la ubicación de cada archivo.
 
 ```powershell
 uv run python scripts/secuencia_a_video.py seq_00015
 uv run tracker procesar --video outputs/videos/seq_00015.mp4 --canales dos_tubos
 ```
 
-Qué deja `procesar` (lo ejecutado / detector_tracker / secuencia; qué es cada campo: [`docs/metricas.md`](docs/metricas.md)):
+| Opción | Descripción |
+|---|---|
+| `--canales` | Archivo JSON con los tubos y sus líneas, por ruta o por nombre de un archivo de `configs/`. Formato y uso: [`docs/comandos.md`, sección 3](docs/comandos.md#3-tubos-y-líneas-de-conteo-json-de-canales). |
+| `--seq` | Nombre de la secuencia. Por defecto se toma del nombre del video. Si la secuencia tiene trayectorias en DAT-02, `conteo.json` incluye el conteo real y el error por tubo. |
+| `--perfil`, `--tracker`, `--conteo` | Ver [Perfiles](#perfiles). |
+| `--sin-video` | Omite el video anotado. |
+| `--salida` | Guarda todos los archivos en una sola carpeta. |
+
+Archivos generados con el perfil por defecto:
 
 ```
-outputs/seguimiento/yolo26_ocsort/seq_00015/seguimiento.json          cada pez por tubo, cuadro a cuadro
-outputs/conteo/yolo26_ocsort/seq_00015/dos_lineas/conteo.json         contados, conteo real y error por tubo
-outputs/conteo/yolo26_ocsort/seq_00015/dos_lineas/anotado.mp4         el video con tubos, líneas, IDs y conteo
-outputs/conteo/yolo26_ocsort/seq_00015/dos_lineas/                    + los 5 archivos del formato común
+outputs/seguimiento/yolo26_ocsort/seq_00015/seguimiento.json      trayectoria de cada pez, por tubo
+outputs/conteo/yolo26_ocsort/seq_00015/dos_lineas/conteo.json     conteo del sistema, conteo real y error por tubo
+outputs/conteo/yolo26_ocsort/seq_00015/dos_lineas/anotado.mp4     video con tubos, líneas, IDs y conteo
+outputs/conteo/yolo26_ocsort/seq_00015/dos_lineas/                además, los 5 archivos del formato común
 ```
 
-Por defecto se usa el perfil `variante`: detector `yolo26`, tracker OC-SORT (`configs/tracker_variante.yaml`, el ganador del barrido) y conteo de dos líneas. Con `--perfil base` (la línea base del plan: YOLO11 `best` + ByteTrack + línea simple) las carpetas son `best_bytetrack/.../linea_simple/`. Con `--salida CARPETA` todo queda en esa carpeta.
+Las rutas siguen el esquema `outputs/<operación>/<detector>_<tracker>/<secuencia>/`. En el video, la línea A es amarilla, la línea B es naranja y cada pez cambia a verde cuando se cuenta. Para regenerarlo: `uv run python scripts/video_conteo.py <carpeta del conteo> --video <video>`.
 
-- `procesar` usa el tracker del perfil (`variante` = OC-SORT con IoU mínimo 0.1 y confirmación inmediata). Para otro: `--tracker configs/botsort.yaml` (también `bytetrack.yaml`, `botsort_reid.yaml`, `ocsort.yaml` o `deepsort.yaml`).
-- `--canales` es el JSON con los tubos (`src/tracker/canales.py`), por ruta o por nombre en `configs/`: por cada tubo, su rectángulo `caja` en píxeles y sus líneas `linea_a` y `linea_b` como fracción de su alto. De prueba (1456 × 1088): `cuadro_completo` (un tubo) y `dos_tubos` (mitad izquierda y derecha). La interfaz de Angelo guarda los tubos reales en este mismo formato. Formato completo, cómo mover las líneas y qué revisar: [`docs/comandos.md`](docs/comandos.md#3-tubos-y-líneas-de-conteo-json-de-canales).
-- La secuencia sale del nombre del video (`seq_00015.mp4`) o de `--seq`.
-- `--conteo linea_simple` o `--conteo dos_lineas` cambia la regla sin cambiar de perfil. Por ejemplo, YOLO26 con una sola línea: `--perfil variante --conteo linea_simple`. También sirve en `evaluar-seguimiento` y en el barrido.
-- Regla de conteo (línea simple): un pez `(canal, id)` suma **una sola vez**, cuando su centro pasa de estar sobre la línea A del tubo a estar en ella o bajo ella. Subir no cuenta, ni aparecer ya bajo la línea ([formato común](docs/formato_comun.md#regla-de-conteo)).
-- Regla de la variante (`--perfil variante`, histéresis): el pez se «arma» al verse sobre la línea A y cuenta al llegar a la línea B, así una caja que oscila no suma de más. No cuenta trayectorias de menos de 5 cuadros, y un ID nuevo que aparece donde debería estar otro perdido hace poco (última posición + velocidad) hereda su estado: no se cuenta dos veces ni se pierde un pez que el tracker fragmentó. Parámetros en `configs/perfiles/variante.yaml`.
-- `anotado.mp4`: tubos, línea A en amarillo (y B en naranja con dos líneas), cada pez con su ID y su ruta, en verde cuando ya contó. `--sin-video` lo omite; `scripts/video_conteo.py <carpeta del conteo> --video <video>` lo rehace.
+#### 3. Evaluar el seguimiento contra DAT-02
 
-**4. Evaluar el seguimiento contra DAT-02.** Corre el detector una vez por secuencia y cada tracker sobre esas detecciones; escribe en `outputs/evaluacion_seguimiento/<detector>/` (`best`, `yolo26` u `oraculo`) las trayectorias de cada tracker por secuencia (`<secuencia>/<tracker>.txt`) y `metricas_<grupo>_<regla>.csv` y `.json` (p. ej. `metricas_val_dos_lineas.csv`; el JSON trae lo mismo con fecha, perfil, pesos y secuencias; qué es cada columna: [`docs/metricas.md`](docs/metricas.md); IDF1, ID switches, MOTA, cajas de más y de menos, peces del GT y del tracker y **el conteo**: lo que cuenta cada tracker con la regla del perfil (línea simple en `base`, histéresis en `variante`), la referencia de DAT-02 y el error absoluto, que es la comparación principal del plan). Con `--oraculo` usa las cajas del GT en vez del detector, para separar fallas del tracker de fallas del detector.
-
-Trackers disponibles (cada uno con su YAML en `configs/`): **ByteTrack** y **BoT-SORT** (Ultralytics), **BoT-SORT con ReID** (`botsort_reid.yaml`), **OC-SORT** (librería `trackers`, Python ≥ 3.11) y **DeepSORT** (`deep-sort-realtime`). Los dos que miran la apariencia de cada pez necesitan la imagen y son más lentos: DeepSORT usa una red MobileNet y BoT-SORT con ReID usa los pesos del propio detector. Con `--oraculo` reciben las cajas del GT pero igual miran la imagen real.
+`evaluar-seguimiento` ejecuta el detector una vez por secuencia y aplica cada tracker sobre las mismas detecciones. Con `--oraculo`, las detecciones se reemplazan por las cajas etiquetadas, lo que permite distinguir los errores del tracker de los del detector.
 
 ```powershell
 uv run tracker evaluar-seguimiento --conjunto val --trackers configs/bytetrack.yaml configs/botsort.yaml configs/botsort_reid.yaml configs/ocsort.yaml configs/deepsort.yaml
 uv run tracker evaluar-seguimiento --conjunto val --trackers configs/bytetrack.yaml configs/botsort.yaml configs/botsort_reid.yaml configs/ocsort.yaml configs/deepsort.yaml --oraculo
-uv run python scripts/video_seguimiento.py seq_00015 --tracker ocsort       # caja, ID y ruta de cada pez (de esa evaluación)
+uv run python scripts/video_seguimiento.py seq_00015 --tracker ocsort
 ```
 
-**5. Referencia de conteo de val y test.** Escribe en `configs/conteo_real.yaml` el conteo de cada secuencia según DAT-02 (un tubo del tamaño del cuadro, línea A en `conteo.linea` de `config.yaml`). Reemplaza el conteo manual del Lab 15.
+Los resultados se guardan en `outputs/evaluacion_seguimiento/<detector>/` (`yolo26`, `best` u `oraculo`):
 
-```powershell
-uv run python scripts/conteo_referencia.py --guardar
-```
+- `<secuencia>/<tracker>.txt`: trayectorias en formato MOT; `video_seguimiento.py` deja a su lado `<tracker>.mp4`.
+- `metricas_<grupo>_<regla>.csv` y `.json` (por ejemplo, `metricas_val_dos_lineas.csv`): por secuencia y en total, IDF1, cambios de ID, MOTA, cajas sobrantes y faltantes, y el error de conteo respecto de la referencia, que es la comparación principal del plan. El significado de cada columna está en [`docs/metricas.md`](docs/metricas.md).
 
-**6. Elegir el tracker de la variante (barrido).** Prueba variantes de cada tracker (`track_buffer`, `match_thresh`, umbral de OC-SORT), con el detector y con oráculo, y las ordena por error de conteo, luego IDF1 y luego cambios de ID. Escribe [`resultados/tablas/comparacion_trackers.md`](resultados/tablas/comparacion_trackers.md) con la tabla y la decisión; con `--aplicar` deja el ganador en `configs/tracker_variante.yaml`, que es el tracker del perfil `variante`. `--rapido` omite DeepSORT y BoT-SORT+ReID, los más lentos.
+| Tracker | Archivo | Biblioteca | Observaciones |
+|---|---|---|---|
+| ByteTrack | `configs/bytetrack.yaml` | Ultralytics | Tracker del perfil `base`. |
+| BoT-SORT | `configs/botsort.yaml` | Ultralytics | |
+| BoT-SORT con ReID | `configs/botsort_reid.yaml` | Ultralytics | Compara la apariencia de cada pez con los pesos del detector; requiere la imagen y es más lento. |
+| OC-SORT | `configs/ocsort.yaml` | `trackers` | Requiere Python 3.11 o superior. |
+| DeepSORT | `configs/deepsort.yaml` | `deep-sort-realtime` | Compara la apariencia con una red MobileNet; requiere la imagen y es más lento. |
+
+#### 4. Elegir el tracker de la variante
+
+`scripts/barrido_tracker.py` evalúa 28 combinaciones de parámetros de los cinco trackers, con el detector y con el oráculo, y las ordena por error de conteo, luego por IDF1 y luego por cambios de ID. Escribe la tabla y la decisión en [`resultados/tablas/comparacion_trackers.md`](resultados/tablas/comparacion_trackers.md). Con `--aplicar`, el ganador se copia a `configs/tracker_variante.yaml`, que es el tracker del perfil `variante`; `--rapido` omite DeepSORT y BoT-SORT con ReID, que son los más lentos.
 
 ```powershell
 uv run python scripts/barrido_tracker.py --aplicar
 ```
 
-**Otros comandos.**
+#### 5. Guardar el conteo de referencia
+
+`scripts/conteo_referencia.py --guardar` escribe en `configs/conteo_real.yaml` el conteo de cada secuencia de validación y prueba según DAT-02, con un tubo del tamaño del cuadro y la línea A en `conteo.linea` de `configs/config.yaml`. Reemplaza el conteo manual del Lab 15.
 
 ```powershell
-uv run tracker                                                  # abre la aplicación (interfaz en construcción)
-uv run tracker inferir --video outputs/videos/seq_00015.mp4     # solo detector -> outputs/deteccion/yolo26/seq_00015/
-uv run tracker validar outputs/conteo/yolo26_ocsort/seq_00015/dos_lineas   # comprueba el formato común
-uv run python scripts/conteo_referencia.py --guardar            # conteo real de val y test -> configs/conteo_real.yaml
+uv run python scripts/conteo_referencia.py --guardar
+```
+
+### Otros comandos
+
+```powershell
+uv run tracker                                                                # abre la interfaz gráfica
+uv run tracker inferir --video outputs/videos/seq_00015.mp4                   # solo el detector -> outputs/deteccion/yolo26/seq_00015/
+uv run tracker validar outputs/conteo/yolo26_ocsort/seq_00015/dos_lineas     # comprueba el formato común
 ```
 
 ### Datos de la Solemne 3
 
+Los datos no se versionan. Deben ubicarse en `data/` con la siguiente estructura:
+
 ```
-data/                               # no se versiona
-├── seq_00008/                      # DAT-01 (etiquetado del curso): images/ con los cuadros, labels/ con YOLO .txt
+data/
+├── seq_00008/                      DAT-01 (etiquetado del curso): images/ con los cuadros y labels/ con etiquetas YOLO
 ├── ...
-├── lab15_sec1/ ... lab15_sec6/     # Lab 15 (etiquetado del profesor): misma forma, solo van a train
-└── tracking/                       # DAT-02 (trayectorias), rutas.tracking en config.yaml
+├── lab15_sec1/ ... lab15_sec6/     Lab 15 (etiquetado del profesor): misma estructura; solo se usa en entrenamiento
+└── tracking/                       DAT-02 (trayectorias); ruta configurable en rutas.tracking de config.yaml
     └── seq_00015_Final/
-        ├── gt/gt.txt               # frame,id,x,y,w,h,conf,clase,visibilidad (formato MOT)
-        └── frames.txt              # frame,imagen: une el frame del gt.txt con su imagen (frame 1 = _00000)
+        ├── gt/gt.txt               frame,id,x,y,w,h,conf,clase,visibilidad (formato MOT)
+        └── frames.txt              frame,imagen: asocia cada frame del gt.txt con su imagen (frame 1 = _00000)
 ```
 
-### Qué hay en el código
+### Organización del código
 
-| Qué | Dónde |
+| Componente | Ubicación |
 |---|---|
-| Contrato `procesar(video, canales, perfil) -> Resultados` | `src/tracker/pipeline.py` |
-| Canal (tubo) y su línea de conteo, en JSON | `src/tracker/canales.py`, `configs/canales_cuadro_completo.json` |
-| Detector por cuadro (solo cambian los pesos) | `src/tracker/detector.py` |
-| Seguimiento por canal: un tracker por tubo (ByteTrack, BoT-SORT con o sin ReID, OC-SORT o DeepSORT) | `src/tracker/seguimiento.py`, `configs/bytetrack.yaml`, `botsort.yaml`, `botsort_reid.yaml`, `ocsort.yaml`, `deepsort.yaml` |
-| Conteo: línea simple (base) e histéresis con filtro y herencia de estado (variante) | `src/tracker/conteo.py` |
-| Barrido y elección del tracker de la variante | `scripts/barrido_tracker.py`, `configs/tracker_variante.yaml` |
+| Contrato `procesar(video, canales, perfil) -> Resultados` y perfil por defecto | `src/tracker/pipeline.py` |
+| Canales (tubos) y sus líneas de conteo | `src/tracker/canales.py`, `configs/canales_*.json` |
+| Detector por cuadro | `src/tracker/detector.py` |
+| Seguimiento por canal (un tracker por tubo) | `src/tracker/seguimiento.py`, `configs/<tracker>.yaml` |
+| Conteo: línea simple y dos líneas | `src/tracker/conteo.py` |
+| Carpetas de salida, `seguimiento.json` y `conteo.json` | `src/tracker/salidas.py` |
+| Video anotado | `src/tracker/video.py` |
+| Formato común: exportar, leer y validar | `src/tracker/formato.py` |
 | Evaluación del seguimiento contra DAT-02 | `src/tracker/evaluar_seguimiento.py` |
-| Exportar, leer y validar el formato común | `src/tracker/formato.py` |
-| Interfaz (Angelo) | `src/tracker/gui/` |
-| Línea base y variante (detector, tracker, conteo) | `configs/perfiles/base.yaml`, `variante.yaml` |
-| Split y `data.yaml` | `configs/split.yaml`, `scripts/preparar_split.py` |
-| Videos: conteo, seguimiento, secuencia | `scripts/video_conteo.py`, `scripts/video_seguimiento.py`, `scripts/secuencia_a_video.py` |
-| Referencia de conteo desde DAT-02 | `scripts/conteo_referencia.py`, `configs/conteo_real.yaml` |
+| Interfaz gráfica | `src/tracker/gui/` |
+| Perfiles | `configs/perfiles/base.yaml`, `configs/perfiles/variante.yaml` |
+| Partición y archivos de datos | `configs/split.yaml`, `scripts/preparar_split.py` |
+| Elección del tracker | `scripts/barrido_tracker.py`, `configs/tracker_variante.yaml` |
+| Conteo de referencia | `scripts/conteo_referencia.py`, `configs/conteo_real.yaml` |
+| Videos | `scripts/secuencia_a_video.py`, `scripts/video_conteo.py`, `scripts/video_seguimiento.py` |
 
 Línea base de detección (YOLO11 del Lab 15 en la validación nueva, 8 secuencias de DAT-01): mAP@50 **0,9436** ([tabla](resultados/tablas/map50_yolo11_val.md)). YOLO26n (`weights/yolo26.pt`) llega a mAP@50 **0,9916** en la misma validación ([comparación](resultados/tablas/yolo11_vs_yolo26.md)).
 
