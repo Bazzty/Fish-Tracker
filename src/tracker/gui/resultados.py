@@ -10,6 +10,7 @@ from PySide6.QtWidgets import (
     QMessageBox, QPushButton, QTabWidget, QTableWidget, QTableWidgetItem, QVBoxLayout, QWidget,
 )
 
+from . import lineas
 from .canvas import color_for
 from .diagnostico import ETIQUETAS, TIPOS, diagnosticar
 
@@ -77,6 +78,7 @@ class ResultadosWindow(QDialog):
         tabs = QTabWidget()
         tabs.addTab(self._tab_conteo(), "Conteo por canal")
         tabs.addTab(self._tab_diagnostico(), "Diagnóstico del seguimiento")
+        tabs.addTab(self._tab_trayectorias(), "Trayectorias y línea A")
         lay = QVBoxLayout(self)
         lay.addWidget(tabs)
 
@@ -171,6 +173,44 @@ class ResultadosWindow(QDialog):
         self.detalle = _tabla(["Tipo", "Canal", "ID", "Cuadro", "Tiempo (s)", "Detalle"], [], estirar=5)
         lay.addWidget(self.detalle, 1)
         self._filtrar()
+        return w
+
+    # ---- ¿por qué no se contó? trayectorias y posición de la línea A ----
+    def _tab_trayectorias(self) -> QWidget:
+        d, w = self.diag, QWidget()
+        lay = QVBoxLayout(w)
+        if not d.hay_trayectorias:
+            lay.addWidget(QLabel("No hay trayectorias en estos resultados."))
+            lay.addStretch(1)
+            return w
+        nombres = {c.id: (c.nombre or c.id) for c in self.res.canales}
+        textos = [
+            "<b>Regla del perfil base:</b> un pez se cuenta cuando se ve <b>por encima</b> de la línea A y después "
+            "en la línea o más abajo. Si un ID nace ya bajo la línea A, o se pierde antes de llegar, <b>no se cuenta</b>: "
+            "el conteo puede salir 0 aunque pasen peces. Los peces deben ir de arriba hacia abajo."
+        ]
+        for cid, g in d.guias.items():
+            if g.n == 0:
+                textos.append(f"<b>{nombres.get(cid, cid)}</b>: sin trayectorias.")
+                continue
+            t = (f"<b>{nombres.get(cid, cid)}</b>: línea A en {g.linea_a:.0%}; "
+                 f"{g.cruzan} de {g.n} trayectorias la cruzan.")
+            if g.p_ini is not None:
+                t += (f" Las trayectorias largas suelen nacer por encima del {g.p_ini:.0%} del alto "
+                      f"y terminar por debajo del {g.p_fin:.0%}.")
+                t += (f" <b>La línea A funcionaría entre {g.sugerida[0]:.0%} y {g.sugerida[1]:.0%}.</b>" if g.sugerida
+                      else " No hay un rango claro: el seguimiento corta las trayectorias antes de que nazcan las siguientes.")
+            textos.append(t)
+        if not lineas.EDITABLES:
+            textos.append(f"<i>Las líneas de los tubos dibujados en la GUI son fijas (A {lineas.LINEA_A:.0%}, "
+                          f"B {lineas.LINEA_B:.0%}); se definen en lineas.py.</i>")
+        info = QLabel("<br>".join(textos))
+        info.setWordWrap(True)
+        lay.addWidget(info)
+        lay.addWidget(_tabla(
+            ["Canal", "ID", "Cuadros", "Veces visto", "% alto al inicio", "% alto al final", "Sentido", "¿Cruza la línea A?"],
+            [[nombres.get(x.canal, x.canal), x.id, f"{x.ini}–{x.fin}", x.n, f"{x.rel_ini:.0%}", f"{x.rel_fin:.0%}",
+              x.sentido, "Sí" if x.cruza_a else "No"] for x in d.pistas]), 1)
         return w
 
     def _filtrar(self) -> None:
