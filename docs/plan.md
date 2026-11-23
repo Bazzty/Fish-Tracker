@@ -14,7 +14,7 @@ Estados: **hecha** · **en curso** · **pendiente**. Todo lo nuevo vive en `src/
 | Bastian | mAP@50 de YOLO11 en la validación nueva | `resultados/tablas/map50_yolo11_val.md`, `resultados/evaluacion_val_best.json` | hecha (0,9436) |
 | Alonso | Secuencias de entrenamiento y split | `data/`, `configs/split.yaml`, `scripts/preparar_split.py` | hecha (`scripts/preparar_split.py`: dos `data.yaml` en `runs/` y [tabla](../resultados/tablas/cuadros_por_split.md): 69 / 16 / 15 % de cuadros y cajas) |
 | Alonso | Revisión de consistencia entre etiquetados | `docs/` (informe) | pendiente |
-| Alonso | Seguimiento por canal (ByteTrack) | `src/tracker/seguimiento.py` | hecha (un tracker por canal; ByteTrack o BoT-SORT según el perfil; video con `scripts/video_conteo.py`) |
+| Alonso | Seguimiento por canal (ByteTrack) | `src/tracker/seguimiento.py` | hecha (un tracker por canal; ByteTrack, BoT-SORT (con o sin ReID), OC-SORT o DeepSORT según el perfil; video con `scripts/video_conteo.py`) |
 | Alonso | Conteo por canal, línea simple | `src/tracker/conteo.py`, `scripts/video_conteo.py` | hecha (`uv run tracker procesar` de punta a punta; falta probarlo en un video real contra la referencia) |
 | Alonso | Referencia de conteo por canal de val y test, aplicando la regla de conteo a las trayectorias de DAT-02 | `scripts/conteo_referencia.py`, `configs/conteo_real.yaml` | en curso (script listo; falta `--guardar` con DAT-02) |
 | Angelo | Interfaz: abrir video, dibujar tubos y zona, guardar JSON | `src/tracker/gui/` | pendiente (stub) |
@@ -31,8 +31,8 @@ Estados: **hecha** · **en curso** · **pendiente**. Todo lo nuevo vive en `src/
 | Bastian | Elegir detector y dejar pesos en `weights/` | `weights/yolo26.pt`, `configs/perfiles/variante.yaml` | hecha |
 | Bastian | Error de conteo base vs variante y caso difícil | `src/tracker/comparar.py` (por crear), `docs/` | pendiente |
 | Bastian | Integración y entrega | todo | pendiente |
-| Alonso | Conteo con histéresis, filtro y herencia de estado | `src/tracker/conteo.py` | pendiente |
-| Alonso | Ajuste de ByteTrack y comparación de trackers (IDF1, ID switches contra DAT-02) | `src/tracker/seguimiento.py`, `src/tracker/evaluar_seguimiento.py`, `configs/bytetrack.yaml`, `configs/botsort.yaml` | en curso (herramienta lista: `uv run tracker evaluar-seguimiento`; falta correrla con DAT-02 y ajustar) |
+| Alonso | Conteo con histéresis, filtro y herencia de estado | `src/tracker/conteo.py`, `configs/perfiles/variante.yaml` | hecha (`--perfil variante` en `procesar` y en `evaluar-seguimiento`; probado con casos a mano y datos sintéticos, falta con DAT-02) |
+| Alonso | Ajuste de ByteTrack y comparación de trackers (IDF1, ID switches contra DAT-02) | `src/tracker/seguimiento.py`, `src/tracker/evaluar_seguimiento.py`, `configs/{bytetrack,botsort,botsort_reid,ocsort,deepsort}.yaml`, `scripts/barrido_tracker.py` | en curso (5 trackers y el barrido listos: `uv run python scripts/barrido_tracker.py --aplicar`; falta correrlo con DAT-02 para la tabla y la decisión) |
 | Angelo | Avance en vivo y conteo por canal | `src/tracker/gui/` | pendiente |
 | Angelo | Exportar al formato común, con errores claros | `src/tracker/formato.py`, `src/tracker/gui/` | pendiente |
 | Angelo | Prueba con el Validador y README de uso | `README.md` | pendiente |
