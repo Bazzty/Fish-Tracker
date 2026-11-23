@@ -51,7 +51,7 @@ uv run tracker evaluar-seguimiento --conjunto val --trackers configs/bytetrack.y
 
 ## 3. Tubos y líneas de conteo (JSON de canales)
 
-`procesar` cuenta por tubo. Los tubos y sus líneas vienen en un JSON que se pasa con `--canales` (por **ruta** o por **nombre** de un archivo de `configs/`). Lo guarda la interfaz (`uv run tracker` → dibujar tubos → guardar) o se escribe a mano.
+`procesar` cuenta los peces por tubo. Los tubos y sus líneas se definen en un archivo JSON que se indica con `--canales`, ya sea por **ruta** o por **nombre** de un archivo de `configs/`. El archivo puede generarse desde la interfaz gráfica (`uv run tracker`: dibujar los tubos y guardar) o escribirse a mano.
 
 ### Formato
 
@@ -68,60 +68,62 @@ uv run tracker evaluar-seguimiento --conjunto val --trackers configs/bytetrack.y
 }
 ```
 
-| Campo | Qué es |
+| Campo | Descripción |
 |---|---|
-| `version` | Siempre `1`. |
-| `video` | Archivo y tamaño del video en píxeles (informativo). |
-| `id` | Nombre único del tubo; es la clave en todos los resultados (`canal_1`, `canal_2`, ...). |
-| `caja` | Rectángulo del tubo en píxeles del video: `[x1, y1, x2, y2]` (esquina superior izquierda e inferior derecha). Se exige `x1 < x2` e `y1 < y2`. |
-| `nombre` | Etiqueta que se muestra en el video y la interfaz. |
-| `linea_a` | Línea A como **fracción del alto del tubo** desde arriba (0 = borde superior, 1 = inferior). Con una línea, es la única; con dos, es donde el pez se «arma». |
-| `linea_b` | Línea B (solo la usa el conteo de dos líneas): donde el pez **cuenta**. Se exige `0 ≤ linea_a < linea_b ≤ 1`. |
-| `activo` | `false` = el tubo está marcado pero no se analiza. |
-| `forma` | Por ahora siempre `"rect"`. |
+| `version` | Versión del formato. Siempre `1`. |
+| `video` | Nombre y tamaño del video en píxeles. Es informativo. |
+| `id` | Identificador único del tubo (`canal_1`, `canal_2`, …). Es la clave del tubo en todos los resultados. |
+| `caja` | Rectángulo del tubo en píxeles del video: `[x1, y1, x2, y2]`, esquina superior izquierda y esquina inferior derecha. Debe cumplirse `x1 < x2` e `y1 < y2`. |
+| `nombre` | Etiqueta que se muestra en el video y en la interfaz. |
+| `linea_a` | Posición de la línea A como **fracción del alto del tubo**, medida desde arriba (0 = borde superior, 1 = borde inferior). Con la regla de línea simple es la única línea; con la de dos líneas, es donde el pez queda armado. |
+| `linea_b` | Posición de la línea B, en la misma escala. Solo la usa la regla de dos líneas: es donde el pez se cuenta. Debe cumplirse `0 ≤ linea_a < linea_b ≤ 1`. |
+| `activo` | `false` indica que el tubo está marcado, pero no se analiza. |
+| `forma` | Forma del tubo. Por ahora, siempre `"rect"`. |
 
-En píxeles, cada línea queda en `y = y1 + fracción × (y2 − y1)` del tubo. Un pez cuenta en el tubo que contiene **el centro** de su caja; lo que cae fuera de todo tubo (por ejemplo, la pared entre dos tubos) no cuenta en ninguno.
+La coordenada de cada línea en píxeles es `y = y1 + fracción × (y2 − y1)`. Cada pez se asigna al tubo que contiene **el centro** de su caja; los que quedan fuera de todos los tubos, por ejemplo sobre la pared que los separa, no se cuentan.
 
-### JSON incluidos (video de 1456 × 1088)
+### Archivos incluidos
+
+Ambos corresponden a un video de 1456 × 1088 píxeles.
 
 | Nombre para `--canales` | Archivo | Tubos |
 |---|---|---|
-| `cuadro_completo` | `configs/canales_cuadro_completo.json` | Uno, del tamaño del cuadro (líneas 0.5 y 0.6). |
-| `dos_tubos` | `configs/canales_dos_tubos.json` | Mitad izquierda y mitad derecha (líneas 0.5 y 0.6). |
+| `cuadro_completo` | `configs/canales_cuadro_completo.json` | Un tubo del tamaño del cuadro, con líneas en 0,5 y 0,6. |
+| `dos_tubos` | `configs/canales_dos_tubos.json` | Mitad izquierda y mitad derecha, con líneas en 0,5 y 0,6. |
+
+Cualquier archivo copiado a `configs/` puede indicarse por nombre: `configs/canales_mis_tubos.json` se usa como `--canales mis_tubos`.
 
 ### Comandos
 
 ```bash
-# Con un JSON incluido (por nombre)
+# Archivo incluido, por nombre
 uv run tracker procesar --video outputs/videos/seq_00015.mp4 --canales dos_tubos
 
-# Con un JSON de la interfaz o propio (por ruta)
+# Archivo propio o generado por la interfaz, por ruta
 uv run tracker procesar --video outputs/videos/seq_00015.mp4 --canales "C:/ruta/seq_00015.canales.json"
 
-# El video no se llama como la secuencia: decir cuál es, para tener el conteo real (DAT-02)
+# Video con otro nombre: se indica la secuencia para obtener el conteo real (DAT-02)
 uv run tracker procesar --video outputs/videos/otro_nombre.mp4 --canales "C:/ruta/tubos.json" --seq seq_00015
 
-# Una sola línea (la A) en vez de dos
+# Conteo con una sola línea (la A)
 uv run tracker procesar --video outputs/videos/seq_00015.mp4 --canales dos_tubos --conteo linea_simple
 
-# Comprobar que un JSON se lee bien (imprime cada tubo; si algo está mal, dice qué)
+# Verificación de un archivo: imprime cada tubo o, si hay un error, lo describe
 uv run python -c "import sys; sys.path.insert(0, 'src'); from tracker.canales import ruta_canales, cargar_canales; print(cargar_canales(ruta_canales('dos_tubos')))"
 ```
 
-Un JSON copiado a `configs/` se puede pasar por nombre: `configs/canales_mis_tubos.json` → `--canales mis_tubos`.
+### Posición de las líneas
 
-### Mover las líneas
+- Las líneas se ajustan editando `linea_a` y `linea_b` en el archivo o desde la interfaz. Cada tubo puede tener sus propias líneas.
+- El conteo real se calcula con la línea A del mismo archivo. Por lo tanto, mover la línea A modifica también la referencia; mover solo la línea B, no.
+- Conviene no separar demasiado las líneas, porque el tracker debe seguir al pez entre ambas. A 10 cuadros por segundo, un pez desciende hasta unos 100 píxeles por cuadro; si se pierde entre A y B, no se cuenta. Con líneas en 0,5 y 0,6 la separación es de unos 109 píxeles, y con 0,4 y 0,6, de unos 210. Si en el video anotado hay peces que cruzan A pero no se cuentan, se recomienda acercar las líneas (por ejemplo, a 0,45 y 0,55).
+- `evaluar-seguimiento` y el barrido no leen este archivo: usan un tubo del tamaño del cuadro, con la línea A en `conteo.linea` de `configs/config.yaml` (0,50) y la línea B 0,1 más abajo.
 
-- Se editan `linea_a` y `linea_b` de cada tubo en el JSON (o en la interfaz). Cada tubo puede tener sus propias líneas.
-- **El conteo real usa la línea A del mismo JSON:** mover la A cambia también la referencia; mover solo la B no.
-- **No separar demasiado A y B:** el tracker tiene que seguir al pez entre las dos. A 10 fps un pez baja hasta ~100 px por cuadro; si se pierde entre A y B no cuenta. Con 0.5 → 0.6 (dos_tubos) son ~109 px; con 0.4 → 0.6 son ~210 px. Si en el video hay peces que cruzan A pero no cuentan, acercar las líneas (p. ej. 0.45 → 0.55).
-- **`evaluar-seguimiento` y el barrido no leen el JSON de canales:** usan un tubo del tamaño del cuadro con la A en `conteo.linea` de `configs/config.yaml` (0.50) y la B 0.1 más abajo.
+### Revisión de un archivo nuevo
 
-### Qué revisar en un JSON nuevo
-
-- Que el **nombre del video** sea el de la secuencia (`seq_00015.mp4`) o pasar `--seq`; si no, `conteo.json` dirá «conteo real no disponible». En DAT-02 las secuencias se llaman `seq_000XX` (las `seq_000X` son del Lab 15).
-- Que las cajas cubran por donde pasan los peces y que el hueco entre tubos sea solo la pared.
-- Que `linea_a < linea_b` en todos los tubos.
+- El nombre del video debe coincidir con el de la secuencia (`seq_00015.mp4`); si no, debe indicarse `--seq`. En caso contrario, `conteo.json` informa que el conteo real no está disponible. En DAT-02 las secuencias se llaman `seq_000XX`; los nombres `seq_000X` corresponden al Lab 15.
+- Las cajas deben cubrir toda la zona por donde pasan los peces, y el espacio entre tubos debe corresponder solo a la pared.
+- En todos los tubos debe cumplirse `linea_a < linea_b`.
 
 ## 4. Scripts (`scripts/`)
 
