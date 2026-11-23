@@ -5,12 +5,15 @@ evaluar-seguimiento sobre las mismas detecciones (con el detector y con oráculo
     1. menor error de conteo con el detector (la comparación principal del plan),
     2. mayor IDF1,
     3. menos ID switches.
-Escribe resultados/tablas/comparacion_trackers.md y resultados/comparacion_trackers.json; las trayectorias y
+Escribe resultados/tablas/comparacion_trackers.md y resultados/comparacion_trackers.json (con --yaml test,
+comparacion_trackers_test.md y .json, para no pisar la decisión tomada en val); las trayectorias y
 métricas de cada configuración quedan en outputs/barrido_tracker/<detector u oraculo>/.
 Con --aplicar copia el ganador a configs/tracker_variante.yaml, que es el tracker del perfil variante.
+Solo se aplica desde val: elegir el tracker con test lo dejaría sin un conjunto independiente para confirmarlo.
 
 Uso:
     uv run python scripts/barrido_tracker.py                      # val, perfil variante (YOLO26 + histéresis)
+    uv run python scripts/barrido_tracker.py --yaml test          # las secuencias de test de configs/split.yaml
     uv run python scripts/barrido_tracker.py --rapido             # sin DeepSORT ni BoT-SORT+ReID (más lentos)
     uv run python scripts/barrido_tracker.py --aplicar            # y deja el ganador en el perfil variante
 """
@@ -84,8 +87,9 @@ def tabla(variantes: dict, res: dict[str, dict], orden: list[str]) -> list[str]:
 
 
 p = argparse.ArgumentParser()
-p.add_argument("--conjunto", default="val")
-p.add_argument("--seq", nargs="+", help="secuencias concretas (en vez de --conjunto)")
+p.add_argument("--yaml", "--conjunto", dest="conjunto", choices=["val", "test"], default="val",
+               help="conjunto de configs/split.yaml que se evalúa (por defecto val)")
+p.add_argument("--seq", nargs="+", help="secuencias concretas (en vez de --yaml)")
 p.add_argument("--perfil", default="variante", help="detector y regla de conteo (por defecto YOLO26 + histéresis)")
 p.add_argument("--conteo", choices=["linea_simple", "dos_lineas"], help="regla de conteo (por defecto la del perfil)")
 p.add_argument("--rapido", action="store_true", help="sin DeepSORT ni BoT-SORT+ReID")
@@ -94,6 +98,8 @@ p.add_argument("--aplicar", action="store_true", help="copiar el ganador a confi
 p.add_argument("--config", default=None)
 a = p.parse_args()
 
+if a.aplicar and (a.conjunto != "val" or a.seq):
+    sys.exit("[ERROR] --aplicar solo se usa con val: test sirve para confirmar el ganador, no para elegirlo")
 cfg = cargar_config(a.config)
 perfil = con_conteo(cargar_perfil(a.perfil), a.conteo)
 disponibles = con_gt(cfg)
@@ -117,9 +123,11 @@ ganador = orden[0]
 g = res["detector"][ganador]
 regla = perfil.get("conteo", {}).get("tipo", "linea_simple")
 
-md = ["# Comparación de trackers (T14)", "",
+conjunto = a.conjunto if not a.seq else "secuencias indicadas"
+md = [f"# Comparación de trackers (T14): {conjunto}", "",
       f"Generado por `scripts/barrido_tracker.py` el {datetime.now():%Y-%m-%d %H:%M}. Perfil `{perfil['nombre']}` "
-      f"(detector `{perfil['detector']['pesos']}`, conteo `{regla}`), {len(seqs)} secuencias: {', '.join(seqs)}.",
+      f"(detector `{perfil['detector']['pesos']}`, conteo `{regla}`), {len(seqs)} secuencias de {conjunto}: "
+      f"{', '.join(seqs)}.",
       "", "Criterio: 1) menor error de conteo con el detector, 2) mayor IDF1, 3) menos ID switches. "
       "La referencia es la línea simple aplicada a las trayectorias de DAT-02.", "",
       "## Decisión", "",
@@ -132,10 +140,11 @@ if "oraculo" in res:
     orden_o = sorted(variantes, key=lambda n: (res["oraculo"][n]["error_conteo"], -res["oraculo"][n]["IDF1"]))
     md += ["", "## Con oráculo (cajas del GT: mide solo el tracker)", "", *tabla(variantes, res["oraculo"], orden_o),
            "", "Si un tracker acierta con oráculo y falla con el detector, la falla es del detector, no del tracker."]
-destino = ruta_abs(cfg["rutas"]["resultados"]) / "tablas" / "comparacion_trackers.md"
+sufijo = "" if a.conjunto == "val" and not a.seq else f"_{a.conjunto if not a.seq else '_'.join(seqs)}"
+destino = ruta_abs(cfg["rutas"]["resultados"]) / "tablas" / f"comparacion_trackers{sufijo}.md"
 destino.parent.mkdir(parents=True, exist_ok=True)
 destino.write_text("\n".join(md) + "\n", encoding="utf-8")
-(destino.parent.parent / "comparacion_trackers.json").write_text(json.dumps({
+(destino.parent.parent / f"comparacion_trackers{sufijo}.json").write_text(json.dumps({
     "fecha": datetime.now().isoformat(timespec="seconds"), "perfil": perfil["nombre"],
     "pesos": perfil["detector"]["pesos"], "regla_conteo": regla, "secuencias": seqs, "ganador": ganador,
     "configuraciones": {n: {"tracker": v["base"], "cambios": v["cambios"],

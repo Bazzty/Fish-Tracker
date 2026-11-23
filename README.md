@@ -71,7 +71,10 @@ uv run tracker procesar --video outputs/videos/seq_00015.mp4 --canales dos_tubos
 | `--seq` | Nombre de la secuencia. Por defecto se toma del nombre del video. Si la secuencia tiene trayectorias en DAT-02, `conteo.json` incluye el conteo real y el error por tubo. |
 | `--perfil`, `--tracker`, `--conteo` | Ver [Perfiles](#perfiles). |
 | `--sin-video` | Omite el video anotado. |
+| `--fps` | Cuadros por segundo del video anotado. Por defecto, los del video de entrada. Solo cambia la velocidad de reproducción, no el conteo. |
 | `--salida` | Guarda todos los archivos en una sola carpeta. |
+
+Todos los videos se escriben en H.264 con el FFmpeg de `imageio-ffmpeg`. `secuencia_a_video.py` usa por defecto 10 cuadros por segundo (`conteo.fps_cuadros` de `configs/config.yaml`), que es la frecuencia de captura de las secuencias, y acepta `--fps` para cambiarla. Esos fps pasan a ser los del video de entrada y determinan `tiempo_s` en `seguimiento.json` y `conteo.json`, pero no el número de peces contados.
 
 Archivos generados con el perfil por defecto:
 
@@ -82,7 +85,7 @@ outputs/conteo/yolo26_ocsort/seq_00015/dos_lineas/anotado.mp4     video con tubo
 outputs/conteo/yolo26_ocsort/seq_00015/dos_lineas/                además, los 5 archivos del formato común
 ```
 
-Las rutas siguen el esquema `outputs/<operación>/<detector>_<tracker>/<secuencia>/`. En el video, la línea A es amarilla, la línea B es naranja y cada pez cambia a verde cuando se cuenta. Para regenerarlo: `uv run python scripts/video_conteo.py <carpeta del conteo> --video <video>`.
+Las rutas siguen el esquema `outputs/<operación>/<detector>_<tracker>/<secuencia>/`. En el video, la línea A es amarilla, la línea B es naranja y cada pez cambia a verde cuando se cuenta. Para regenerarlo: `uv run python scripts/video_conteo.py <carpeta del conteo> --video <video>`, con `--fps` opcional.
 
 #### 3. Evaluar el seguimiento contra DAT-02
 
@@ -111,8 +114,11 @@ Los resultados se guardan en `outputs/evaluacion_seguimiento/<detector>/` (`yolo
 
 `scripts/barrido_tracker.py` evalúa 28 combinaciones de parámetros de los cinco trackers, con el detector y con el oráculo, y las ordena por error de conteo, luego por IDF1 y luego por cambios de ID. Escribe la tabla y la decisión en [`resultados/tablas/comparacion_trackers.md`](resultados/tablas/comparacion_trackers.md). Con `--aplicar`, el ganador se copia a `configs/tracker_variante.yaml`, que es el tracker del perfil `variante`; `--rapido` omite DeepSORT y BoT-SORT con ReID, que son los más lentos.
 
+Por defecto se usan las secuencias de val de `configs/split.yaml`; `--yaml test` usa las de test y escribe `comparacion_trackers_test.md`, sin reemplazar la tabla de val. El ganador se elige solo en val: con test, `--aplicar` no está permitido, ya que test sirve para confirmar la decisión.
+
 ```powershell
 uv run python scripts/barrido_tracker.py --aplicar
+uv run python scripts/barrido_tracker.py --yaml test
 ```
 
 #### 5. Guardar el conteo de referencia
