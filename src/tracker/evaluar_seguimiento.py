@@ -6,7 +6,7 @@ Salida en outputs/evaluacion_seguimiento/<detector>/ (<detector> = nombre de los
     <secuencia>/<tracker>.txt   trayectorias de cada tracker en formato MOT; las dibuja scripts/video_seguimiento.py.
     metricas_<grupo>.csv        una fila por secuencia y tracker, y una fila TOTAL por tracker (ordenadas por IDF1).
                                 <grupo> = el conjunto (val, test) o las secuencias pedidas con --seq.
-                                Qué significa cada columna: docs/metricas.md. COUNT TRACKER usa la regla del perfil
+                                Qué significa cada columna: README.md, «Métricas y archivos de salida». COUNT TRACKER usa la regla del perfil
                                 (histéresis con --perfil variante); COUNT REFERENCE, la línea simple sobre DAT-02.
     metricas_<grupo>.json       lo mismo (más MOTP) con fecha, perfil, pesos, oráculo y secuencias. Tasas de 0 a 1.
 

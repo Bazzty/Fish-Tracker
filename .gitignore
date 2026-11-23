@@ -8,6 +8,7 @@ __pycache__/
 _to_delete/
 /notebooks
 estadisticas_*.csv
+.pytest_cache
 
 # Archivos de video y pruebas de salida
 *.mp4
