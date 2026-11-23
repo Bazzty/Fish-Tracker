@@ -129,10 +129,10 @@ uv run python -c "import sys; sys.path.insert(0, 'src'); from tracker.canales im
 
 | Script | Qué hace |
 |---|---|
-| `secuencia_a_video.py` 📂 | Arma un `.mp4` desde las imágenes de una secuencia, porque no hay videos originales. |
-| `video_conteo.py` | Rehace el `anotado.mp4` de una corrida de `procesar` (que ya lo genera; útil con `--sin-video`). |
-| `video_seguimiento.py` 📂 | Dibuja caja, ID y ruta de cada pez, a partir de `evaluar-seguimiento`. |
-| `barrido_tracker.py` 📂 | Prueba umbrales de los 5 trackers contra DAT-02 y deja la tabla y la decisión en `resultados/tablas/comparacion_trackers.md`; `--aplicar` fija el ganador en el perfil `variante`. |
+| `secuencia_a_video.py` 📂 | Arma un `.mp4` H.264 desde las imágenes de una secuencia, porque no hay videos originales. `--fps` fija la velocidad (por defecto 10). |
+| `video_conteo.py` | Rehace el `anotado.mp4` de una corrida de `procesar` (que ya lo genera; útil con `--sin-video`). `--fps` cambia la velocidad. |
+| `video_seguimiento.py` 📂 | Dibuja caja, ID y ruta de cada pez, a partir de `evaluar-seguimiento`. `--fps` cambia la velocidad. |
+| `barrido_tracker.py` 📂 | Prueba umbrales de los 5 trackers contra DAT-02 y deja la tabla y la decisión en `resultados/tablas/comparacion_trackers.md`; `--aplicar` fija el ganador en el perfil `variante`. `--yaml test` lo repite con las secuencias de test (`comparacion_trackers_test.md`, sin `--aplicar`). |
 | `conteo_referencia.py` 📂 | Aplica la regla de conteo a las trayectorias etiquetadas (el conteo correcto) y lo compara con el del tracker. |
 | `preparar_split.py` 📂 | Escribe los dos `data.yaml` de entrenamiento y la tabla de cuadros por conjunto. |
 | `generar_ejemplo_formato.py` | Regenera `docs/ejemplo_formato/` con datos sintéticos. **Sobrescribe esos archivos.** |
@@ -142,6 +142,9 @@ uv run python -c "import sys; sys.path.insert(0, 'src'); from tracker.canales im
 uv run python scripts/secuencia_a_video.py seq_00015
 uv run tracker procesar --video outputs/videos/seq_00015.mp4 --canales dos_tubos
 # al terminar imprime dónde quedó todo: seguimiento.json, conteo.json (contado, real y error por tubo) y anotado.mp4
+
+# Mismo proceso con el video anotado a 5 cuadros por segundo (más lento, para revisar cruces)
+uv run tracker procesar --video outputs/videos/seq_00015.mp4 --canales dos_tubos --fps 5
 
 # Referencia de conteo de val y test; con --guardar escribe configs/conteo_real.yaml 📂
 uv run python scripts/conteo_referencia.py

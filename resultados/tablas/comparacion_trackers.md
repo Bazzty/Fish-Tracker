@@ -1,6 +1,6 @@
 # Comparación de trackers (T14)
 
-Generado por `scripts/barrido_tracker.py` el 2026-11-22 19:44. Perfil `variante` (detector `weights/yolo26.pt`, conteo `histeresis`), 8 secuencias: seq_00015, seq_00016, seq_00032, seq_00033, seq_00037, seq_00041, seq_00055, seq_00061.
+Generado por `scripts/barrido_tracker.py` el 2026-11-22 22:46. Perfil `variante` (detector `weights/yolo26.pt`, conteo `histeresis`), 8 secuencias: seq_00015, seq_00016, seq_00032, seq_00033, seq_00037, seq_00041, seq_00055, seq_00061.
 
 Criterio: 1) menor error de conteo con el detector, 2) mayor IDF1, 3) menos ID switches. La referencia es la línea simple aplicada a las trayectorias de DAT-02.
 

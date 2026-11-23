@@ -196,6 +196,8 @@ class VideoH264:
 
         import imageio_ffmpeg
 
+        if fps <= 0:
+            raise SystemExit(f"[ERROR] Los fps del video deben ser mayores que 0 (se indicó {fps:g})")
         self.ruta = Path(ruta)
         self.ruta.parent.mkdir(parents=True, exist_ok=True)
         self.proc = subprocess.Popen(
