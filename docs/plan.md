@@ -29,8 +29,8 @@ Estados: **hecha** · **en curso** · **pendiente**. Todo lo nuevo vive en `src/
 |---|---|---|---|
 | Bastian | Entrenar YOLO26 (solo DAT-01 y Lab 15 + DAT-01) | `src/entrenamiento/entrenar.py`, `src/entrenamiento/experimentos.py`, `resultados/tablas/experimentos_yolo26.md`, `configs/split.yaml` | hecha (ganador: yolo26n con dat01) |
 | Bastian | Elegir detector y dejar pesos en `weights/` | `weights/yolo26.pt`, `configs/perfiles/variante.yaml` | hecha |
-| Bastian | Error de conteo base vs variante y caso difícil | `src/tracker/comparar.py` (por crear), `docs/` | pendiente |
-| Bastian | Integración y entrega | todo | pendiente |
+| Bastian | Error de conteo base vs variante y caso difícil | `src/tracker/comparar.py`, `docs/caso_dificil.md` | hecha (test: base 96 / 132, variante 131 / 132; [tabla](../resultados/tablas/error_conteo_test.md)) |
+| Bastian | Integración y entrega | todo | en curso (clon limpio de develop instala y abre en macOS; falta merge a main) |
 | Alonso | Conteo con histéresis, filtro y herencia de estado | `src/tracker/conteo.py`, `configs/perfiles/variante.yaml` | hecha (perfil por defecto; en test cuenta 131 de 132 peces, [tabla](../resultados/tablas/seguimiento_test.md)) |
 | Alonso | Ajuste de ByteTrack y comparación de trackers (IDF1, ID switches contra DAT-02) | `src/tracker/seguimiento.py`, `src/tracker/evaluar_seguimiento.py`, `configs/{bytetrack,botsort,botsort_reid,ocsort,deepsort}.yaml`, `scripts/barrido_tracker.py` | hecha (ganador OC-SORT en val, [tabla](../resultados/tablas/comparacion_trackers.md); en test IDF1 93,2 %) |
 | Angelo | Avance en vivo y conteo por canal | `src/tracker/gui/` | pendiente |
@@ -40,4 +40,3 @@ Estados: **hecha** · **en curso** · **pendiente**. Todo lo nuevo vive en `src/
 ## Pendientes de decisión
 - Aceptación del formato común por el Validador (`docs/formato_comun.md`).
 - Los videos originales no están en el repo: para probar se arman desde `data/` con `scripts/secuencia_a_video.py`, y se pierden los saltos de numeración.
-- Material del Lab 15 que describe la partición antigua: archivado en `lab15/` (`analysis/` y `metodologia.md`).

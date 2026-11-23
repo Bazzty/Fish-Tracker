@@ -7,6 +7,7 @@
                                                      # -> outputs/seguimiento/... y outputs/conteo/... con anotado.mp4
     uv run tracker validar outputs/conteo/<...>      # comprueba una carpeta contra el formato común
     uv run tracker evaluar-seguimiento --conjunto val [--trackers configs/bytetrack.yaml configs/ocsort.yaml ...] [--oraculo]
+    uv run tracker comparar "Base=<metricas>.json" "Variante=<metricas>.json[:tracker]" [--salida tabla.md]
 
 Perfil por defecto: variante (YOLO26 + OC-SORT de configs/tracker_variante.yaml + dos líneas); --perfil base es la
 línea base del plan (YOLO11 + ByteTrack + línea simple).
@@ -146,11 +147,20 @@ def main(argv: list[str] | None = None) -> int:
     evs.add_argument("--trackers", nargs="+", help="YAMLs a comparar; por defecto el del perfil")
     evs.add_argument("--oraculo", action="store_true", help="cajas del GT en vez del detector")
     evs.add_argument("--conteo", choices=["linea_simple", "dos_lineas"], help="regla de conteo (por defecto la del perfil)")
+    cmp = sub.add_parser("comparar", help="tabla de error de conteo entre configuraciones (metricas_*.json)")
+    cmp.add_argument("entradas", nargs="+", help="ETIQUETA=RUTA.json o ETIQUETA=RUTA.json:TRACKER")
+    cmp.add_argument("--salida", help="guarda la tabla Markdown en este archivo")
+    cmp.add_argument("--titulo", help="título de la tabla")
     a = p.parse_args(argv)
 
     try:
         if a.orden == "evaluar-seguimiento":
             return _evaluar_seguimiento(a)
+        if a.orden == "comparar":
+            from tracker.comparar import comparar
+
+            print(comparar(a.entradas, a.salida, a.titulo))
+            return 0
         if a.orden == "validar":
             errores = formato.validar(a.carpeta)
             print("\n".join(errores) if errores else "[OK] La carpeta cumple el formato común.")

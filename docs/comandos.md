@@ -19,6 +19,7 @@ uv run tracker           # abre la interfaz: abrir video, dibujar tubos, guardar
 | `tracker procesar` | Detector, seguimiento y conteo por tubo. Guarda los 5 archivos del [formato común](formato_comun.md). |
 | `tracker validar` | Comprueba que una carpeta de resultados cumpla el formato común. |
 | `tracker evaluar-seguimiento` | Compara trackers (IDF1, cambios de ID, MOTA) contra las trayectorias de DAT-02 📂. |
+| `tracker comparar` | Tabla de error de conteo entre configuraciones a partir de sus `metricas_*.json`. |
 
 ```bash
 # Solo el detector (usa el cuadro completo como un solo tubo) -> outputs/deteccion/<detector>/<secuencia>/
