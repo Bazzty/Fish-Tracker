@@ -32,4 +32,16 @@ Como yolo26s_dat01 llegó a 30 épocas sin parar por paciencia, se entrenó con 
 
 Criterio: el s reemplaza al n solo si supera en +0,01 el mAP@50:95 o el recall sin bajar el mAP@50. No lo cumple: empata en mAP y pierde 0,011 de recall. **Se mantiene yolo26n**: pierde menos peces, pesa unos 5 MB contra unos 20 MB y es más rápido para el video en vivo.
 
+## Comprobación: lr0 0,01 en lugar de 0,001
+El lr0 0,001 se heredó de la línea base YOLO11 para que la comparación fuera justa y no se había probado otro valor. Se entrenó yolo26n con dat01 y lr0 0,01, con el mismo protocolo que el final (100 épocas, paciencia 20). Hizo 89 épocas (el final, 47).
+
+| val | lr0 0,01 (89 ép.) | lr0 0,001 (47 ép., final) |
+|---|---|---|
+| mAP@50 | 0.9925 | 0.9916 |
+| mAP@50:95 | 0.7447 | 0.7446 |
+| precisión | 0.9758 | 0.9721 |
+| recall | 0.9654 | 0.9673 |
+
+Criterio: el cambio de lr0 se adopta solo si supera en +0,01 el mAP@50:95 o el recall sin bajar el mAP@50. No lo cumple: el mAP@50 queda dentro del empate (+0,0009), el mAP@50:95 es igual y el recall baja 0,002. **Se mantiene lr0 0,001**: rinde igual y converge en la mitad de las épocas. Sin señal de sobreajuste (pérdida de val estable en 0,58). Cifras de la corrida `resultados/prueba_lr001/` (sin pesos versionados). El test no se usó para esta comparación.
+
 Límite: val y test vienen de la misma cámara que train (no hay secuencias repetidas ni imágenes idénticas, comprobado con hashes); las métricas valen para este montaje. En una instalación nueva hay que validar de nuevo.
