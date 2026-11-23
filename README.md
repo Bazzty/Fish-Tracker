@@ -94,6 +94,12 @@ uv run tracker evaluar-seguimiento --conjunto val --trackers configs/bytetrack.y
 uv run python scripts/video_seguimiento.py seq_00015 --tracker ocsort
 ```
 
+Val se usa para comparar y ajustar. La medición final, con el tracker de la variante, se hace una sola vez en test ([resultado](resultados/tablas/seguimiento_test.md)):
+
+```powershell
+uv run tracker evaluar-seguimiento --conjunto test
+```
+
 Los resultados se guardan en `outputs/evaluacion_seguimiento/<detector>/` (`yolo26`, `best` u `oraculo`):
 
 - `<secuencia>/<tracker>.txt`: trayectorias en formato MOT; `video_seguimiento.py` deja a su lado `<tracker>.mp4`.
@@ -165,142 +171,58 @@ data/
 | Elección del tracker | `scripts/barrido_tracker.py`, `configs/tracker_variante.yaml` |
 | Conteo de referencia | `scripts/conteo_referencia.py`, `configs/conteo_real.yaml` |
 | Videos | `scripts/secuencia_a_video.py`, `scripts/video_conteo.py`, `scripts/video_seguimiento.py` |
+| Entrenamiento y evaluación del detector | `src/entrenamiento/entrenar.py`, `evaluar.py`, `experimentos.py` |
 
-Línea base de detección (YOLO11 del Lab 15 en la validación nueva, 8 secuencias de DAT-01): mAP@50 **0,9436** ([tabla](resultados/tablas/map50_yolo11_val.md)). YOLO26n (`weights/yolo26.pt`) llega a mAP@50 **0,9916** en la misma validación ([comparación](resultados/tablas/yolo11_vs_yolo26.md)).
+### Resultados
 
-> Lo que sigue (diseño, partición, reproducción y resultados) describe el **Lab 15** y su partición antigua de 6 secuencias; sus cifras no valen para la Solemne 3.
-> Los scripts `entorno.py`, `grilla.py`, `contar.py`, `criterio.py`, `analisis.py` y `visualizador.py` del Lab 15 se quitaron del repositorio (siguen en el historial de git, antes del commit «chore: quitar scripts y resultados del Lab 15»). Estas secciones se conservan solo como referencia de cómo se obtuvo el detector.
+Todas las cifras son de secuencias que el modelo no vio al entrenar. Val sirvió para elegir y test se usó una sola vez, al final.
 
-## Inicio rápido
-
-Todos los comandos se ejecutan desde la raíz del repositorio. Los datos no se incluyen: ver la sección Datos.
-
-```powershell
-uv sync
-uv run python src/entrenamiento/entrenar.py --nombre prueba --epocas 1
-uv run python src/entrenamiento/evaluar.py --split val
-```
-
-Qué hace cada uno: instala el entorno, entrena 1 época de prueba (no toca `weights/`) y evalúa los pesos entregados (mAP@0.5 de validación 0,9431, en la partición antigua del Lab 15). Para contar los salmones de un video se usa `uv run tracker procesar` (ver la sección Tracker).
-
-## Diseño
-
-```
-Video → Lectura → Detector (YOLO11) → Seguimiento (ByteTrack) → Conteo (línea virtual) → Video anotado + conteo
-```
-
-| Módulo | Entra | Sale | Técnica |
+| Qué | Línea base (YOLO11 + ByteTrack) | Variante (YOLO26 + OC-SORT + dos líneas) | Detalle |
 |---|---|---|---|
-| Lectura de video | archivo de video | cuadros, uno a uno | OpenCV `VideoCapture` |
-| Detector | un cuadro | cajas con confianza (clase `fish`) | YOLO11 (Ultralytics) |
-| Seguimiento | cajas de cada cuadro | cajas con ID | ByteTrack |
-| Conteo | cajas con ID | número de salmones que cruzan hacia abajo | cruce de línea virtual |
-| Anotación | cuadro, cajas con ID, línea, conteo | video anotado | OpenCV |
+| Detector, mAP@50 en val | 0,9436 | 0,9916 | [yolo11_vs_yolo26.md](resultados/tablas/yolo11_vs_yolo26.md) |
+| Detector, recall en val | 0,8904 | 0,9673 | [yolo11_vs_yolo26.md](resultados/tablas/yolo11_vs_yolo26.md) |
+| Detector, mAP@50 en test | — | 0,9913 | [yolo11_vs_yolo26.md](resultados/tablas/yolo11_vs_yolo26.md) |
+| Conteo en val (8 secuencias) | — | 135 de 137 peces, IDF1 93,0 % | [comparacion_trackers.md](resultados/tablas/comparacion_trackers.md) |
+| **Conteo en test (9 secuencias)** | — | **131 de 132 peces, IDF1 93,2 %** | [seguimiento_test.md](resultados/tablas/seguimiento_test.md) |
 
-### Decisiones y fuentes
+Cómo se eligió cada pieza:
 
-- **Detector: YOLO11, tamaños n (base) y s (comparación).** Detector de un solo pase, entrena con las etiquetas YOLO tal cual vienen y se integra con el seguimiento. Los salmones son grandes (mediana ~3,7 % de la imagen) y hay pocos por cuadro, por lo que un modelo pequeño debería bastar; la comparación n vs s lo verifica.
-  Fuentes: [Ultralytics YOLO11](https://docs.ultralytics.com/models/yolo11); Redmon et al., [You Only Look Once](https://arxiv.org/abs/1506.02640) (CVPR 2016, idea de detección en un solo pase).
-- **Seguimiento: ByteTrack.** Asocia casi todas las cajas, incluidas las de baja confianza (el detector entrega desde 0,10), para reducir trayectorias fragmentadas. El umbral de asociación `match_thresh` se elige en validación (ver `lab15/metodologia.md`). Usa solo movimiento y cajas. No hay etiquetas de seguimiento, por lo que se elige el método más simple y explicable.
-  Fuentes: Zhang et al., [ByteTrack](https://arxiv.org/abs/2110.06864); [Ultralytics Track](https://docs.ultralytics.com/modes/track/) (soporta ByteTrack, parámetros `track_high_thresh`, `track_buffer`, `match_thresh`).
-- **Conteo: cruce de línea virtual.** La cámara es fija y mira desde arriba; los salmones avanzan en vertical, de arriba hacia abajo. La línea es horizontal (cruza todo el ancho del cuadro, cubre ambas vías) y está al 50 % del alto, medida desde arriba; se eligió en validación entre 40, 50 y 60 %, junto con `match_thresh` (0,8). Cada ID se cuenta una sola vez: cuando el centro de su caja cruza la línea hacia abajo o, si hubo un salto de cuadros, cuando aparece por primera vez sobre la línea o bajo ella sin subir (ver `lab15/metodologia.md`).
-  Fuente: [Ultralytics Object Counting](https://docs.ultralytics.com/guides/object-counting/) (conteo con línea o región, entradas y salidas).
-- **Lectura y escritura de video: OpenCV.** Fuentes: [cv::VideoCapture](https://docs.opencv.org/4.x/d8/dfe/classcv_1_1VideoCapture.html) (lee video), [cv::VideoWriter](https://docs.opencv.org/4.x/dd/d9e/classcv_1_1VideoWriter.html) (guarda video).
+- **Detector:** YOLO26n con DAT-01 ([experimentos_yolo26.md](resultados/tablas/experimentos_yolo26.md)). Se compararon n y s y dos versiones de datos; quedaron empatados y ganó el n por ser más liviano y rápido. También se comprobó yolo26s a 100 épocas y lr0 0,01 en lugar de 0,001, sin mejora.
+- **Tracker:** OC-SORT, elegido en val entre cinco trackers y 28 combinaciones de parámetros ([comparacion_trackers.md](resultados/tablas/comparacion_trackers.md)).
 
-Limitaciones: ByteTrack se evalúa en benchmarks de personas y ningún paper citado trata salmones.
+Límite: train, val y test vienen de la misma cámara. Las cifras valen para este montaje; en otra instalación hay que validar de nuevo.
 
-## Estructura
+### Estructura del repositorio
 
 ```
-Contreras-Carrera/
+Fish-Tracker/
 ├── README.md
 ├── pyproject.toml / uv.lock
-├── configs/
-│   ├── config.yaml        # TODOS los parámetros: semilla, entrenamiento, grilla, conteo, criterio
-│   ├── split.yaml         # partición por secuencia (única fuente)
-│   ├── conteo_real.yaml   # conteo manual por secuencia (Avance 1)
-│   └── bytetrack.yaml     # parámetros fijos de ByteTrack
+├── configs/           config.yaml (parámetros), split.yaml (partición), perfiles/, trackers y JSON de tubos
 ├── src/
-│   ├── comun.py           # compartido: rutas, semilla, dispositivo, data.yaml, lectura de cuadros
-│   ├── tracker/           # la aplicación: pipeline, detector, seguimiento, conteo, formato
-│   │   └── gui/           # interfaz de escritorio
-│   └── entrenamiento/
-│       ├── entrenar.py    # entrena UNA configuración del detector
-│       └── evaluar.py     # mAP@0.5, mAP@0.5:0.95, precisión, recall (val o test)
-├── scripts/               # preparar_split, videos de conteo y seguimiento, referencia de conteo
-├── weights/               # best.pt (elegido) + best.yaml (ficha: corrida, mAP val, sha256)
-├── resultados/            # corridas de entrenamiento, evaluaciones (.json) y tablas/
-├── docs/                  # plan, formato común, comandos
-├── lab15/                 # archivo del Lab 15: análisis del Avance 1 y metodología
-└── outputs/               # videos y corridas (no se versiona)
+│   ├── comun.py       rutas, semilla, dispositivo y data.yaml compartidos
+│   ├── tracker/       la aplicación: pipeline, detector, seguimiento, conteo, salidas, formato y gui/
+│   └── entrenamiento/ entrenar, evaluar y experimentos del detector
+├── scripts/           partición, videos, referencia de conteo y barrido de trackers
+├── weights/           best.pt (YOLO11, base) y yolo26.pt (variante), cada uno con su ficha .yaml
+├── resultados/        métricas (.json), curvas de entrenamiento (results.csv) y tablas/
+├── docs/              comandos, métricas, formato común y plan
+├── issues/            problemas encontrados
+├── lab15/             archivo del Lab 15 (diseño, partición antigua y resultados)
+├── data/              datos privados (no se versiona)
+└── outputs/           videos y corridas (no se versiona)
 ```
 
-## Datos
+### Requisitos
 
-Los datos son privados: no se incluyen en el repositorio ni en la entrega.
-Ubicar las 6 secuencias en `data/` con esta forma:
+[uv](https://docs.astral.sh/uv/), git y, para entrenar, una GPU NVIDIA con driver reciente (`nvidia-smi` debe mostrar CUDA 12.8 o más). `uv sync` instala PyTorch con CUDA 12.8 en Windows y Linux (necesario para la serie RTX 50) y desde PyPI en macOS. Clonar en una ruta corta, sin espacios ni OneDrive. Si `uv sync` actualiza `uv.lock`, subir ese archivo.
 
-```
-data/
-├── seq_0001/
-│   ├── images/    # cuadros .jpeg
-│   └── labels/    # etiquetas YOLO .txt
-├── ...
-└── seq_0006/
-```
+### Reproducibilidad
 
-## Partición de los datos
-
-Por secuencia completa, definida en `configs/split.yaml`:
-
-| Conjunto | Secuencias | Cuadros | Uso |
-|---|---|---|---|
-| Train | seq_0001, seq_0006 | 856 (65 %) | entrenar |
-| Val | seq_0002 | 242 (18 %) | elegir hiperparámetros y modelo |
-| Test | seq_0003, seq_0004, seq_0005 | 218 (17 %) | evaluación final, una sola vez |
-
-Los cuadros vecinos son casi idénticos, por eso no se reparten por cuadro.
-
-Metodología (métricas, criterio de éxito, plan de experimentos): ver `lab15/metodologia.md`.
-
-## Instalación (PC con Windows y RTX 5070 Ti)
-
-Requisitos: [uv](https://docs.astral.sh/uv/), git y driver NVIDIA reciente (`nvidia-smi` debe mostrar CUDA 12.8 o más).
-Clonar en una ruta corta, sin espacios ni OneDrive (p. ej. `C:\dev\Fish-Counter`).
-
-```powershell
-uv sync
-```
-
-`uv sync` instala PyTorch con CUDA 12.8 en Windows y Linux (necesario para la serie RTX 50) y desde PyPI en macOS.
-Si `uv sync` actualiza `uv.lock`, subir ese archivo al repositorio.
-
-## Reproducir
-
-Todos los comandos se ejecutan desde la raíz del repositorio. Los parámetros están en `configs/config.yaml`.
-
-| Paso | Comando | Resultado |
-|---|---|---|
-| 0. Probar el flujo (1 época, no es la entrega) | `uv run python src/entrenamiento/entrenar.py --nombre prueba --epocas 1` | `resultados/prueba/` (no toca `weights/`) |
-| 1. Entrenar la configuración entregada (R2) | `uv run python src/entrenamiento/entrenar.py --modelo yolo11n.pt --imgsz 640 --lr0 0.001 --nombre R2` | `resultados/R2/` |
-| 2. Detector en test (una vez) | `uv run python src/entrenamiento/evaluar.py` | `resultados/evaluacion_test_best.json` |
-
-La grilla de 8 corridas (`grilla.py`), el criterio de éxito (`criterio.py`) y el conteo del Lab 15 (`contar.py`) se quitaron del repositorio; sus resultados quedaron en el informe del Lab 15. El conteo del Tracker se hace con `uv run tracker procesar`.
-
-### Resultados presentados
-
-Pesos `weights/best.pt` (corrida R2: yolo11n, 640, lr0 0.001; sha256 `c384a62e…a2f8`).
-
-| Qué | Comando | Valor |
-|---|---|---|
-| mAP@0.5 en validación | `uv run python src/entrenamiento/evaluar.py --split val` | 0,9431 |
-| mAP@0.5 en test | `uv run python src/entrenamiento/evaluar.py` | 0,9685 |
-
-Los valores de test quedan en `resultados/evaluacion_test_best.json`. La metodología del Lab 15 está en `lab15/metodologia.md`.
-
-### Notas de reproducibilidad
-
-- Semilla 42, `deterministic=True`, optimizador SGD explícito (con `optimizer: auto` Ultralytics ignora `lr0`).
+- Semilla 42, `deterministic=True` y optimizador SGD explícito (con `optimizer: auto` Ultralytics ignora `lr0`).
 - `evaluar.py` usa el `imgsz` guardado en los pesos y umbrales fijos (`conf 0.001`, `iou 0.7`, lote 16).
 - `plots=False`: Ultralytics no guarda imágenes del dataset en `resultados/`. Los datos no salen de `data/`.
-- Entrega: `git archive --format=zip --prefix=Contreras-Carrera/ -o Contreras-Carrera.zip HEAD` (incluye solo lo versionado: sin `data/`, `.venv/` ni `outputs/`).
+- Los comandos para entrenar y medir el detector están en [`docs/comandos.md`](docs/comandos.md).
+- Entrega: `git archive --format=zip --prefix=Fish-Tracker/ -o Fish-Tracker.zip HEAD` (incluye solo lo versionado: sin `data/`, `.venv/` ni `outputs/`).
+
+El material del Lab 15 (diseño original, partición antigua y sus resultados) está en [`lab15/README.md`](lab15/README.md).
