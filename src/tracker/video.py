@@ -18,8 +18,11 @@ def color(i: int) -> tuple[int, int, int]:
     return int(b * 255), int(g * 255), int(r * 255)
 
 
-def anotar(res, video: str | Path, salida: str | Path, dos_lineas: bool = False) -> Path:
-    """Dibuja los resultados 'res' (pipeline.Resultados) sobre 'video' y escribe 'salida'. Devuelve la ruta."""
+def anotar(res, video: str | Path, salida: str | Path, dos_lineas: bool = False, fps: float | None = None) -> Path:
+    """Dibuja los resultados 'res' (pipeline.Resultados) sobre 'video' y escribe 'salida'. Devuelve la ruta.
+
+    'fps' cambia solo la velocidad de reproducción del video anotado (por defecto, la del video original).
+    """
     por_cuadro = defaultdict(list)
     for t in res.trayectorias:
         por_cuadro[t["cuadro"]].append(t)
@@ -30,7 +33,7 @@ def anotar(res, video: str | Path, salida: str | Path, dos_lineas: bool = False)
     if not cap.isOpened():
         raise ValueError(f"No se pudo abrir el video: {video}")
     salida = Path(salida)
-    escritor = VideoH264(salida, res.meta["ancho"], res.meta["alto"], res.meta["fps"])
+    escritor = VideoH264(salida, res.meta["ancho"], res.meta["alto"], fps or res.meta["fps"])
     ruta, conteo, cuadro = defaultdict(list), {c.id: 0 for c in activos}, 0
     while True:
         ok, img = cap.read()

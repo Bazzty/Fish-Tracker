@@ -1,12 +1,9 @@
-# Tracker del perfil variante: OC-SORT, ganador del barrido con la variante (YOLO26 + dos líneas, val, 2026-11-22):
-# ocsort_buf15_iou0.1_min1 cuenta 135 de 137 peces (error 2), IDF1 93,0 %, 1 cambio de ID; ver
-# resultados/tablas/comparacion_trackers.md. Los valores salen del diagnóstico de seq_00046 (cuadros 86-93): a 10 fps
-# un pez baja 56-117 px por cuadro y la caja de un cuadro apenas se superpone con la del siguiente (IoU 0.15-0.35).
+# Tracker del perfil variante. Elegido por scripts/barrido_tracker.py el 2026-11-22 (ocsort_buf15_iou0.1_min1); ver resultados/tablas/comparacion_trackers.md.
 tracker_type: ocsort
-lost_track_buffer: 15             # cuadros que se guarda un ID perdido (1,5 s a 10 fps); con 60 revivía IDs en otro pez
-frame_rate: 30                    # la librería escala lost_track_buffer por frame_rate / 30 (30 = sin escalar)
-minimum_consecutive_frames: 1     # confirma un ID nuevo de inmediato; con 3, el pez quedaba 3 cuadros sin seguir
-minimum_iou_threshold: 0.1        # IoU mínimo para asociar; con 0.2 perdía peces rápidos (86 -> 87: IoU 0.15)
-direction_consistency_weight: 0.2 # peso de la dirección del movimiento al asociar
-high_conf_det_threshold: 0.25     # OC-SORT ignora cajas con menos confianza (no tiene segunda asociación)
-delta_t: 3                        # cuadros hacia atrás para estimar la dirección
+lost_track_buffer: 15
+frame_rate: 30
+minimum_consecutive_frames: 1
+minimum_iou_threshold: 0.1
+direction_consistency_weight: 0.2
+high_conf_det_threshold: 0.25
+delta_t: 3

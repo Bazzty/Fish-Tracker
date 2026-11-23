@@ -21,10 +21,11 @@ p = argparse.ArgumentParser()
 p.add_argument("carpeta", help="carpeta del conteo que dejó 'uv run tracker procesar'")
 p.add_argument("--video", required=True, help="el mismo video que se procesó")
 p.add_argument("--salida", default=None, help="por defecto <carpeta>/anotado.mp4")
+p.add_argument("--fps", type=float, default=None, help="fps del video anotado (por defecto, los del video original)")
 a = p.parse_args()
 
 conteo_json = Path(a.carpeta) / "conteo.json"
 dos_lineas = conteo_json.exists() and \
     json.loads(conteo_json.read_text(encoding="utf-8"))["regla_de_conteo"]["nombre"] == "dos_lineas"
-salida = anotar(formato.leer(a.carpeta), a.video, a.salida or Path(a.carpeta) / "anotado.mp4", dos_lineas)
+salida = anotar(formato.leer(a.carpeta), a.video, a.salida or Path(a.carpeta) / "anotado.mp4", dos_lineas, a.fps)
 print(f"[OK] Video anotado: {salida.resolve()}")

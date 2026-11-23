@@ -1,5 +1,5 @@
 {
-  "fecha": "2026-11-22T19:44:59",
+  "fecha": "2026-11-22T22:46:14",
   "perfil": "variante",
   "pesos": "weights/yolo26.pt",
   "regla_conteo": "histeresis",

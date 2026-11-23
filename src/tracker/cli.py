@@ -3,7 +3,7 @@
     uv run tracker                                   # abre la aplicación
     uv run tracker inferir --video v.mp4             # solo detector -> outputs/deteccion/<detector>/<secuencia>/
     uv run tracker procesar --video v.mp4 --canales dos_tubos [--perfil base] [--conteo linea_simple]
-                                                     # [--tracker configs/ocsort.yaml]
+                                                     # [--tracker configs/ocsort.yaml] [--fps 5 (video anotado)]
                                                      # -> outputs/seguimiento/... y outputs/conteo/... con anotado.mp4
     uv run tracker validar outputs/conteo/<...>      # comprueba una carpeta contra el formato común
     uv run tracker evaluar-seguimiento --conjunto val [--trackers configs/bytetrack.yaml configs/ocsort.yaml ...] [--oraculo]
@@ -79,7 +79,7 @@ def _procesar(a) -> int:
         from tracker.video import anotar
 
         print("\n  Dibujando el video anotado ...", end="", flush=True)
-        video = anotar(res, a.video, d_conteo / "anotado.mp4", nombre_regla(perfil) == "dos_lineas")
+        video = anotar(res, a.video, d_conteo / "anotado.mp4", nombre_regla(perfil) == "dos_lineas", a.fps)
 
     print(f"\n[OK] {seq} | modelo {modelo} | conteo {nombre_regla(perfil)}")
     for c, n in res.conteos.items():
@@ -134,6 +134,7 @@ def main(argv: list[str] | None = None) -> int:
                      help="variante (YOLO26 + OC-SORT + dos líneas, por defecto) o base (YOLO11 + ByteTrack + línea simple)")
     pro.add_argument("--tracker", help="YAML de otro tracker (bytetrack, botsort, ocsort, deepsort); reemplaza el del perfil")
     pro.add_argument("--sin-video", action="store_true", help="no dibujar el video anotado (más rápido)")
+    pro.add_argument("--fps", type=float, help="fps del video anotado (por defecto, los del video); no cambia el conteo")
     pro.add_argument("--conteo", choices=["linea_simple", "dos_lineas"], help="regla de conteo (por defecto la del perfil)")
     val = sub.add_parser("validar", help="valida una carpeta del formato común")
     val.add_argument("carpeta")
