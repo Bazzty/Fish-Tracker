@@ -64,6 +64,8 @@ class VideoCanvas(QWidget):
         self._cursor: QPointF | None = None
         self._drag: dict | None = None
         self._overlay: tuple[list, list] | None = None  # (detecciones, trayectorias) del cuadro en vivo
+        self._rutas: dict[tuple[str, int], list[tuple[float, float]]] = {}  # (canal, id) -> centros recorridos
+        self._contados: set[tuple[str, int]] = set()  # peces ya contados: su línea pasa a verde
         self._conteos: dict[str, int] = {}
         self.setMinimumSize(640, 360)
         self.setCursor(Qt.PointingHandCursor)
@@ -92,10 +94,17 @@ class VideoCanvas(QWidget):
         self._channels = channels
         self.update()
 
-    def set_overlay(self, detecciones: list, trayectorias: list) -> None:
-        """Cajas del cuadro que se está procesando (px del video)."""
+    def set_overlay(self, detecciones: list, trayectorias: list, eventos: list = ()) -> None:
+        """Cajas del cuadro que se está procesando (px del video). Va sumando el recorrido de cada pez."""
+        for t in trayectorias:
+            self._rutas.setdefault((t["canal"], int(t["id"])), []).append((t["cx"], t["cy"]))
+        self._contados.update((e["canal"], int(e["id"])) for e in eventos)
         self._overlay = (detecciones, trayectorias)
         self.update()
+
+    def limpiar_rutas(self) -> None:
+        """Olvida los recorridos (al empezar a procesar otra vez o al abrir otro video)."""
+        self._rutas, self._contados = {}, set()
 
     def clear_overlay(self) -> None:
         if self._overlay is not None:
@@ -312,6 +321,17 @@ class VideoCanvas(QWidget):
             p.setPen(QPen(QColor(255, 255, 255, 110), 1))
             for d in dets:
                 p.drawRect(QRectF(self._to_widget((d["x1"], d["y1"])), self._to_widget((d["x2"], d["y2"]))))
+            for t in tray:  # línea del seguimiento: el recorrido del pez hasta este cuadro (verde si ya se contó)
+                clave = (t["canal"], int(t["id"]))
+                ruta = self._rutas.get(clave, ())
+                if len(ruta) > 1:
+                    col = QColor(tema.OK) if clave in self._contados else QColor(color_for(t["canal"]))
+                    pen = QPen(col, 2.5)
+                    pen.setCapStyle(Qt.RoundCap)
+                    pen.setJoinStyle(Qt.RoundJoin)
+                    p.setPen(pen)
+                    p.setBrush(Qt.NoBrush)
+                    p.drawPolyline(QPolygonF([self._to_widget(q) for q in ruta]))
             for t in tray:
                 caja = QRectF(self._to_widget((t["x1"], t["y1"])), self._to_widget((t["x2"], t["y2"])))
                 p.setBrush(Qt.NoBrush)
