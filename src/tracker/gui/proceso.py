@@ -1,8 +1,3 @@
-"""Procesamiento en segundo plano (T15) y mensajes de error claros (T17).
-
-HiloProceso corre tracker.pipeline.procesar en un QThread para que la ventana no se congele.
-Emite el avance cuadro a cuadro (video con cajas + conteo en vivo) y al final el Resultados.
-"""
 from __future__ import annotations
 
 import dataclasses
@@ -47,6 +42,18 @@ def descripcion_modelo(perfil: str | None = None) -> str:
 
 class _Cancelado(Exception):
     """Se lanza dentro del callback del pipeline para abortar el procesamiento."""
+
+
+def listar_perfiles() -> list[str]:
+    """Perfiles disponibles (configs/perfiles/*.yaml), con 'base' primero."""
+    try:
+        from comun import ruta_abs
+
+        nombres = sorted(p.stem for p in ruta_abs("configs/perfiles").glob("*.yaml"))
+    except Exception:  # sin repo o sin dependencias: valores por defecto
+        nombres = []
+    nombres = nombres or ["base", "variante"]
+    return sorted(nombres, key=lambda n: (n != "base", n))
 
 
 def mensaje_de_error(e: BaseException) -> str:
