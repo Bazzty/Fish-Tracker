@@ -1,3 +1,4 @@
+"""Pantalla de resultados: conteo por canal (T10) y diagnóstico del seguimiento (T11)."""
 from __future__ import annotations
 
 import csv

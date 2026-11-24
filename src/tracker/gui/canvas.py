@@ -1,3 +1,14 @@
+"""Widget que muestra un cuadro del video y permite dibujar y editar tubos (canales).
+
+Cada canal es un cuadrilátero de forma libre (canal_libre.CanalLibre, que hereda de tracker.canales.Canal)
+con dos líneas de conteo, A (entrada) y B (salida), dadas como fracción del alto de su caja envolvente
+medida desde arriba. Los peces avanzan de arriba hacia abajo.
+
+- Dibujar: arrastrar el mouse sobre el video (nace como rectángulo).
+- Un tubo en edición muestra sus 4 esquinas (cada una se mueve sola y deforma el tubo; con Mayús se
+  conserva la forma y solo cambia el tamaño), grips en las líneas A y B, y se mueve arrastrándolo por
+  dentro. Un tubo fijo no se modifica.
+"""
 from __future__ import annotations
 
 from PySide6.QtCore import QPointF, QRectF, Qt, Signal

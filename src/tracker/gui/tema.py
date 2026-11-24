@@ -1,3 +1,7 @@
+"""Apariencia de la GUI: paleta, hoja de estilos (QSS) y pequeños componentes reutilizables.
+
+Todo lo visual vive aquí para poder retocar colores/tamaños en un solo sitio. No contiene lógica del programa.
+"""
 from __future__ import annotations
 
 import tempfile

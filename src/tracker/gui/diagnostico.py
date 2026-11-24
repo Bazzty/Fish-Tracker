@@ -1,3 +1,16 @@
+"""Diagnóstico del seguimiento (T11): clasifica fallos a partir de trayectorias.csv.
+
+Sin etiquetas de referencia no se puede saber con certeza qué es un fallo, así que esto es una
+HEURÍSTICA sobre las trayectorias exportadas (formato común). Los peces avanzan de arriba hacia
+abajo dentro del tubo; se espera que cada ID nazca arriba y termine abajo.
+
+  caja intermitente: un ID desaparece unos cuadros y reaparece (la detección parpadea).
+  ID perdido:        un ID termina en medio del tubo, sin llegar a la salida (ni al final del video).
+  ID nuevo:          un ID aparece en medio del tubo, sin haber entrado por arriba (ni al inicio del video).
+
+Un ID perdido seguido de un ID nuevo cercano en tiempo y posición es una fragmentación probable:
+el mismo pez con dos IDs (riesgo de contarlo dos veces).
+"""
 from __future__ import annotations
 
 from dataclasses import dataclass, field

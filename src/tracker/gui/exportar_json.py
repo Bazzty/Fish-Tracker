@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+import csv
 import json
 import re
 from collections import defaultdict
 from dataclasses import asdict
 from pathlib import Path
+
+from tracker.canales import guardar_canales
 
 from .canal_libre import CanalLibre
 from .diagnostico import diagnosticar
@@ -123,6 +126,61 @@ def guardar_json(ruta, doc: dict) -> None:
     filas = ",\n".join("    " + json.dumps(c, ensure_ascii=False, separators=(",", ":")) for c in cuadros)
     texto = cabecera.rstrip()[:-1].rstrip() + ',\n  "cuadros": [\n' + filas + "\n  ]\n}\n"
     Path(ruta).write_text(texto, encoding="utf-8")
+
+
+def _tiempo(fila: dict, fps: float) -> float:
+    t = fila.get("tiempo_s")
+    return round(float(t if t is not None else fila["cuadro"] / fps), 3)
+
+
+def _escribir_csv(ruta: Path, columnas: list[str], filas: list[list]) -> None:
+    with open(ruta, "w", newline="", encoding="utf-8") as f:
+        w = csv.writer(f, lineterminator="\n")
+        w.writerow(columnas)
+        w.writerows(filas)
+
+
+def guardar_carpeta(res, carpeta, perfil: dict | None = None) -> Path:
+    """Escribe la carpeta de resultados y devuelve su ruta.
+
+    Archivos: `<nombre>.json` (todo en uno), `meta.json`, `canales.json` (tubos como rectángulos: su caja envolvente),
+    `detecciones.csv`, `trayectorias.csv` y `conteos.csv`. `nombre` es el de la carpeta (`<secuencia>_<perfil>`).
+    """
+    carpeta = Path(carpeta)
+    carpeta.mkdir(parents=True, exist_ok=True)
+    meta = res.meta
+    fps = float(meta.get("fps") or 0) or 10.0
+    activos = [c for c in res.canales if c.activo]
+    por_canal = {c.id: int(res.conteos.get(c.id, 0)) for c in activos}
+
+    doc = construir_documento(res, perfil)
+    guardar_json(carpeta / f"{carpeta.name}.json", doc)
+
+    m = {"version": VERSION, "video": meta.get("video"), "perfil": meta.get("perfil"), "pesos": meta.get("pesos"),
+         "fps": fps, "ancho": meta.get("ancho"), "alto": meta.get("alto"), "cuadros": doc["secuencia"]["cuadros"],
+         "solo_detectar": bool(meta.get("solo_detectar", False))}
+    if meta.get("nota_ids"):
+        m["nota_ids"] = meta["nota_ids"]
+    m["conteos"] = por_canal
+    m["total"] = sum(por_canal.values())
+    (carpeta / "meta.json").write_text(json.dumps(m, indent=2, ensure_ascii=False), encoding="utf-8")
+
+    guardar_canales(carpeta / "canales.json", [CanalLibre.desde_canal(c).a_canal() for c in res.canales],
+                    meta.get("video"), meta.get("ancho"), meta.get("alto"))
+
+    _escribir_csv(carpeta / "detecciones.csv", ["cuadro", "tiempo_s", "canal", "x1", "y1", "x2", "y2", "conf"],
+                  [[d["cuadro"], _tiempo(d, fps), d["canal"], round(float(d["x1"]), 2), round(float(d["y1"]), 2),
+                    round(float(d["x2"]), 2), round(float(d["y2"]), 2), round(float(d["conf"]), 4)]
+                   for d in sorted(res.detecciones, key=lambda d: d["cuadro"])])
+    _escribir_csv(carpeta / "trayectorias.csv",
+                  ["cuadro", "tiempo_s", "canal", "id", "x1", "y1", "x2", "y2", "conf", "cx", "cy"],
+                  [[t["cuadro"], _tiempo(t, fps), t["canal"], int(t["id"]), _r(t["x1"]), _r(t["y1"]), _r(t["x2"]),
+                    _r(t["y2"]), round(float(t["conf"]), 4), _r(t["cx"]), _r(t["cy"])]
+                   for t in sorted(res.trayectorias, key=lambda t: t["cuadro"])])
+    _escribir_csv(carpeta / "conteos.csv", ["canal", "id", "cuadro", "tiempo_s", "conteo"],
+                  [[e["canal"], int(e["id"]), e["cuadro"], _tiempo(e, fps), int(e["conteo"])]
+                   for e in sorted(res.eventos, key=lambda e: e["cuadro"])])
+    return carpeta
 
 
 def leer_json(ruta):

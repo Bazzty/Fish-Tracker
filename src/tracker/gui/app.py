@@ -6,8 +6,8 @@ import sys
 from pathlib import Path
 
 import cv2
-from PySide6.QtCore import QEvent, QSize, Qt, QTimer
-from PySide6.QtGui import QColor, QIcon, QImage, QKeySequence, QPainter, QPixmap, QShortcut
+from PySide6.QtCore import QEvent, QSize, Qt, QTimer, QUrl
+from PySide6.QtGui import QColor, QDesktopServices, QIcon, QImage, QKeySequence, QPainter, QPixmap, QShortcut
 from PySide6.QtWidgets import (
     QAbstractSpinBox, QApplication, QCheckBox, QComboBox, QFileDialog, QFrame, QGridLayout, QHBoxLayout,
     QLabel, QLineEdit, QListWidget, QListWidgetItem, QMainWindow, QMessageBox, QProgressBar, QPushButton,
@@ -19,10 +19,11 @@ from tracker.canales import Canal
 from . import lineas, proceso, tema
 from .canal_libre import CanalLibre, cargar_canales_libres, guardar_canales_libres
 from .canvas import VideoCanvas, color_for, num_de
-from .exportar_json import construir_documento, guardar_json, leer_json, nombre_secuencia
+from .exportar_json import guardar_carpeta, leer_json, nombre_secuencia
 from .proceso import GPU_NO_SOPORTADA, HiloProceso, descripcion_modelo, nombre_modelo
 from .resultados import ResultadosWindow
 
+# Resultados de ejemplo del repo (formato común): <repo>/docs/ejemplo_formato
 EJEMPLO = Path(__file__).resolve().parents[3] / "docs" / "ejemplo_formato"
 MIN_GAP_PCT = 2  # separación mínima entre las líneas A y B (en %)
 EXT_VIDEO = (".mp4", ".avi", ".mov", ".mkv")
@@ -215,7 +216,7 @@ class MainWindow(QMainWindow):
         grid.addWidget(self.sp_a, 3, 0)
         grid.addWidget(self.sp_b, 3, 1)
 
-        # posición y tamaño: se dejan a mano pero plegados 
+        # posición y tamaño: se dejan a mano pero plegados (casi nadie los necesita)
         self.avanzado_tubo = tema.Desplegable("Posición y tamaño (avanzado)")
         g2 = QGridLayout()
         g2.setHorizontalSpacing(10)
@@ -288,14 +289,14 @@ class MainWindow(QMainWindow):
         self.lbl_resumen.setWordWrap(True)
         self.btn_ver = QPushButton("Ver resultados")
         self.btn_ver.setCursor(Qt.PointingHandCursor)
-        self.btn_ver.setToolTip("Muestra el último procesamiento; si no hay uno, deja abrir un JSON de resultados "
-                                "exportado")
+        self.btn_ver.setToolTip("Muestra el último procesamiento; si no hay uno, deja abrir una carpeta de resultados "
+                                "exportada")
         self.btn_ver.clicked.connect(self.ver_resultado)
         self.btn_exportar = QPushButton("Exportar resultados…")
         self.btn_exportar.setObjectName("primario")
         self.btn_exportar.setCursor(Qt.PointingHandCursor)
-        self.btn_exportar.setToolTip("Guarda UN archivo JSON con la secuencia, los tubos, el conteo y, cuadro por cuadro, "
-                                     "las cajas del seguimiento con su ID")
+        self.btn_exportar.setToolTip("Guarda una carpeta con el JSON completo, meta.json, canales.json y los CSV de "
+                                     "detecciones, trayectorias y conteos")
         self.btn_exportar.setEnabled(False)
         self.btn_exportar.clicked.connect(self.exportar)
         fila_res = QHBoxLayout()
@@ -1015,36 +1016,53 @@ class MainWindow(QMainWindow):
         if self.resultado is None:
             QMessageBox.warning(self, "Sin resultados", "Procesa un video antes de exportar.")
             return
-        meta = self.resultado.meta
-        sugerido = f"{nombre_secuencia(meta.get('video', ''))}_{meta.get('perfil', 'resultados')}.json"
-        inicio = str(self.video_path.parent / sugerido) if self.video_path else sugerido
-        ruta, _ = QFileDialog.getSaveFileName(self, "Exportar resultados (un solo archivo)", inicio, "JSON (*.json)")
-        if ruta:
-            self.exportar_en(ruta if ruta.lower().endswith(".json") else ruta + ".json")
+        inicio = str(self.video_path.parent) if self.video_path else ""
+        padre = QFileDialog.getExistingDirectory(
+            self, "Elige dónde guardar la carpeta de resultados", inicio)
+        if padre:
+            self.exportar_en(padre)
 
-    def exportar_en(self, ruta: str) -> bool:
-        """Escribe UN archivo JSON con todo (exportar_json.construir_documento) y lo relee para validarlo."""
+    def exportar_en(self, padre: str) -> bool:
+        """Crea `<padre>/<secuencia>_<perfil>/` con el JSON completo, meta, canales y los CSV; la relee para validarla."""
         res = self.resultado
+        meta = res.meta
+        carpeta = Path(padre) / f"{nombre_secuencia(meta.get('video', ''))}_{meta.get('perfil', 'resultados')}"
+        if (carpeta / "meta.json").exists():
+            r = QMessageBox.question(self, "La carpeta ya existe",
+                                     f"Ya hay resultados en:\n{carpeta}\n\n¿Reemplazarlos?",
+                                     QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+            if r != QMessageBox.Yes:
+                return False
         try:
             try:
                 from tracker.pipeline import cargar_perfil
 
-                perfil = cargar_perfil(res.meta.get("perfil"))
+                perfil = cargar_perfil(meta.get("perfil"))
             except Exception:  # sin el YAML del perfil el JSON se escribe igual, sin esa sección
                 perfil = None
-            guardar_json(ruta, construir_documento(res, perfil))
-            leer_json(ruta)  # si no se puede volver a leer, no sirve: mejor enterarse ahora
+            guardar_carpeta(res, carpeta, perfil)
+            leer_json(carpeta / f"{carpeta.name}.json")  # si no se puede volver a leer, no sirve: mejor enterarse ahora
+            try:
+                from tracker.formato import validar
+
+                validar(carpeta)  # el validador del formato común (si esta versión del repo lo trae)
+            except (ImportError, AttributeError, TypeError):
+                pass
         except OSError as e:
-            QMessageBox.critical(self, "No se pudo escribir el archivo",
-                                 f"{e}\n\nElige otra carpeta donde tengas permiso de escritura.")
+            QMessageBox.critical(self, "No se pudo escribir la carpeta",
+                                 f"{e}\n\nElige otra ubicación donde tengas permiso de escritura.")
             return False
         except Exception as e:
             QMessageBox.critical(self, "No se pudo exportar", f"{type(e).__name__}: {e}")
             return False
         self._exportado = True
         self._actualizar_guia()
-        self.statusBar().showMessage(f"Exportado: {ruta}")
-        QMessageBox.information(self, "Exportado", f"Resultados exportados en un solo archivo ✔\n\n{ruta}")
+        self.statusBar().showMessage(f"Exportado: {carpeta}")
+        caja = QMessageBox(QMessageBox.Information, "Exportado", f"Resultados exportados ✔\n\n{carpeta}", QMessageBox.Ok, self)
+        abrir = caja.addButton("Abrir carpeta", QMessageBox.ActionRole)
+        caja.exec()
+        if caja.clickedButton() is abrir:
+            QDesktopServices.openUrl(QUrl.fromLocalFile(str(carpeta)))
         return True
 
     def closeEvent(self, event) -> None:
@@ -1056,9 +1074,9 @@ class MainWindow(QMainWindow):
     # ---- resultados (conteo por canal y diagnóstico del seguimiento) ----
     def abrir_resultados(self) -> None:
         inicio = str(self.video_path.parent) if self.video_path else ""
-        ruta, _ = QFileDialog.getOpenFileName(self, "Abrir resultados (JSON exportado)", inicio, "Resultados (*.json)")
-        if ruta:
-            self.mostrar_resultados_json(ruta)
+        carpeta = QFileDialog.getExistingDirectory(self, "Abrir carpeta de resultados exportada", inicio)
+        if carpeta:
+            self.mostrar_resultados(carpeta)
 
     def mostrar_resultados_json(self, ruta: str) -> bool:
         try:
@@ -1077,10 +1095,14 @@ class MainWindow(QMainWindow):
         self.mostrar_resultados(str(EJEMPLO))
 
     def mostrar_resultados(self, carpeta: str) -> bool:
-        from tracker.formato import leer  # lee y valida la carpeta del formato común
-
         try:
-            res = leer(carpeta)
+            js = Path(carpeta) / f"{Path(carpeta).name}.json"
+            if js.is_file():  # carpeta exportada por esta GUI: el JSON completo
+                res = leer_json(js)
+            else:  # carpeta del formato común sin ese JSON (p. ej. el ejemplo del repo)
+                from tracker.formato import leer
+
+                res = leer(carpeta)
         except (ValueError, OSError, KeyError, TypeError) as e:
             QMessageBox.critical(self, "Resultados inválidos", f"No se pudo leer la carpeta:\n{carpeta}\n\n{e}")
             return False

@@ -1,3 +1,17 @@
+"""Canal de forma libre: un cuadrilátero (4 esquinas) en vez de un rectángulo perfecto.
+
+Es un Canal de tracker.canales (hereda todo) con dos añadidos:
+  - `puntos`: las 4 esquinas (arriba-izq, arriba-der, abajo-der, abajo-izq) en píxeles del video;
+  - `contiene(cx, cy)` pregunta por el cuadrilátero real, no por su caja. El seguimiento y el pipeline
+    asignan cada pez a un tubo con canal_de(...) -> contiene(...), así que funcionan sin cambios.
+
+`caja` siempre es la caja envolvente de las esquinas. Las líneas A y B siguen siendo horizontales y se miden
+como fracción del alto de esa caja (igual que en el formato común).
+
+El formato común de canales solo conoce rectángulos: un tubo rectangular se guarda exactamente como siempre; uno
+deformado se guarda con `forma: "cuadrilatero"` y `puntos` (ver propuesta_canales_poligono.md para que
+tracker.canales.cargar_canales también lo lea).
+"""
 from __future__ import annotations
 
 import json

@@ -1,3 +1,8 @@
+"""Procesamiento en segundo plano (T15) y mensajes de error claros (T17).
+
+HiloProceso corre tracker.pipeline.procesar en un QThread para que la ventana no se congele.
+Emite el avance cuadro a cuadro (video con cajas + conteo en vivo) y al final el Resultados.
+"""
 from __future__ import annotations
 
 import dataclasses
