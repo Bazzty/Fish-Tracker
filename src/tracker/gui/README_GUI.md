@@ -27,7 +27,7 @@ del tubo están en «Posición y tamaño (avanzado)». Colores, tamaños y estil
 - `uv run tracker procesar --video v.mp4 --canales v.canales.json --salida outputs/v` consume el mismo JSON.
 
 ## Resultados (T10) y diagnóstico del seguimiento (T11)
-Botón **Ver resultados** (barra de arriba): muestra el último procesamiento o, si no hay, deja abrir una carpeta del formato común (p. ej. `docs/ejemplo_formato`) con `tracker.formato.leer`.
+Botón **Ver resultados** (barra de arriba): muestra el último procesamiento o, si no hay, deja abrir un JSON exportado (`exportar_json.leer_json`).
 - **Conteo por canal**: tabla, barras y lista de eventos de conteo (un tubo vacío = 0).
 - **Diagnóstico del seguimiento** (`diagnostico.py`): clasifica *caja intermitente*, *ID perdido* e *ID nuevo*
   a partir de `trayectorias.csv`, enlaza fragmentaciones probables (ID perdido → ID nuevo cercano) y exporta CSV.
@@ -38,12 +38,13 @@ Paso 3 y 4 del panel derecho: **⚙ Procesar video**, **Exportar resultados…**
 - **Procesar** corre `tracker.pipeline.procesar` en un hilo aparte: video con cajas e IDs, barra de progreso y
   conteo por canal en vivo (junto al nombre del tubo y en la lista; un tubo sin peces muestra 0). **✖ Cancelar** lo detiene.
   Solo se analizan los tubos marcados (✔). Mientras corre no se puede editar.
-- **Exportar** escribe el formato común en `<carpeta elegida>/<video>_<perfil>/` y lo **valida** con `tracker.formato.validar`
-  (ahí los tubos van como rectángulos: su caja envolvente, porque `tracker.canales.cargar_canales` aún no lee `puntos`). Además deja
-  `<video>_<perfil>.json` (`exportar_json.py`): un solo archivo con la forma exacta de los tubos, el conteo, las trayectorias, el diagnóstico
-  y, cuadro por cuadro, detecciones, cajas con ID y eventos. `exportar_json.leer_json` lo vuelve a leer como `Resultados`.
+- **Exportar** guarda **un solo archivo** `<video>_<perfil>.json` (`exportar_json.py`) con la forma exacta de los tubos, el conteo,
+  las trayectorias, el diagnóstico y, cuadro por cuadro, detecciones, cajas con ID y eventos. Se relee al guardarlo
+  (`exportar_json.leer_json`) para comprobar que quedó bien; **Ver resultados** abre ese mismo JSON.
+- Mientras procesa, cada pez deja su **línea de seguimiento** (el recorrido de su centro, del color del tubo; verde cuando ya se contó),
+  igual que en el video anotado de la CLI.
 - Errores claros: sin video, sin tubos, ningún tubo marcado, pesos no encontrados, perfil no implementado, GPU no soportada,
-  carpeta sin permiso de escritura, archivos que no cumplen el formato.
+  carpeta sin permiso de escritura, archivo de resultados inválido.
 - Los canales vienen del Validador (`canales.json`): **Cargar canales…** los lee tal cual y se procesan sin cambiarlos.
 
 ## Modelo y líneas A/B
