@@ -50,10 +50,9 @@ Paso 3 y 4 del panel derecho: **⚙ Procesar video**, **Exportar resultados…**
 - La GUI procesa siempre con el perfil **variante**: YOLO26 (`weights/yolo26.pt`) y conteo **A → B** con histéresis.
   El perfil se define en `configs/perfiles/variante.yaml`; la constante `proceso.PERFIL` elige cuál se usa.
 - Las líneas A y B de cada tubo se editan (círculos amarillos o panel) y **Restablecer líneas A/B** vuelve a los valores de `lineas.py`.
-  Los tubos nuevos parten en **A = 60 %, B = 65 %**. La regla A → B solo cuenta a un pez que se vio **sobre A** y después llegó a B:
-  con A muy arriba (antes 23 %) los peces que se detectan hacia la mitad del video ya están bajo A y no cuentan, y con B muy abajo
-  (antes 77 %) no cuentan los que terminan antes. Calibración: `seq_0005` (peces seguidos desde el 10-43 % del alto del tubo hasta el
-  67-95 %; con A entre 45 % y 65 % se cuentan los 6). Con pocos videos: conviene revisarla con otras secuencias y con YOLO26.
+  Los tubos nuevos parten en **A = 50 %, B = 60 %**, las mismas líneas de `configs/canales_*.json`. Se eligieron en validación
+  (8 secuencias, 137 peces): con A entre 35 % y 70 % y B hasta 80 % se cuentan 135 de 137, así que el conteo casi no depende de
+  dónde queden; con B >= 85 % cae. La regla A → B solo cuenta a un pez que se vio **sobre A** y después llegó a B.
 - Al **cargar canales** o al **procesar**, si alguna línea queda fuera de `lineas.RANGO_A` / `lineas.B_MAX` la GUI avisa y ofrece restablecerla.
   `lineas.EDITABLES = False` las deja fijas.
 - Un `canales.json` cargado conserva sus líneas salvo que aceptes restablecerlas.

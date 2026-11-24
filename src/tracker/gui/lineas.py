@@ -11,22 +11,20 @@ histéresis, un pez cuya trayectoria termina antes de llegar a B tampoco. Por es
     estarían bajo A. Tiene que quedar bajo el punto donde empiezan a seguirse los peces.
   - B no puede quedar muy abajo (p. ej. 77 %): los peces que terminan antes no llegan a B.
 
-Calibrada con seq_0005 (6 peces, 52 cuadros): los peces empiezan a seguirse (ID estable) entre el 10 % y el
-43 % del alto del tubo y terminan entre el 67 % y el 95 %. Con A entre 45 % y 65 % se cuentan los 6; con A = 36 %
-solo 3, porque 3 peces ya estaban bajo la línea cuando empezó su seguimiento. Como hay peces que se detectan hacia
-la mitad del video, A parte en la zona alta de ese rango (60 %) y B justo debajo (65 %, por encima de donde termina
-el pez más corto: 67 %).
-Es una calibración con pocos videos: conviene revisarla con otras secuencias (en la GUI, «Restablecer líneas A/B»
-vuelve a estos valores).
+Elegidas en validación (8 secuencias de DAT-02, 137 peces; YOLO26 + OC-SORT + histéresis): se barrió A del 30 al
+70 % y B de A+5 a A+20 %. El error es plano: con A entre 35 % y 70 % y B hasta 80 % se cuentan 135 de 137 (error 2);
+con A = 30 % se cuentan 133 y con B >= 85 % el conteo cae (108 con A = 70 %, B = 90 %). Se usa el centro de esa
+zona, A = 50 % y B = 60 %, que además son las líneas de configs/canales_*.json: la GUI y la CLI cuentan igual.
+Test no se usó para elegirlas.
 
 Un canales.json cargado conserva sus líneas; si quedan fuera de RANGO_A / B_MAX, la GUI avisa y ofrece restablecerlas.
 """
-LINEA_A = 0.60
-LINEA_B = 0.65
+LINEA_A = 0.50
+LINEA_B = 0.60
 EDITABLES = True  # True: se pueden mover las líneas A y B (círculos amarillos y panel); False: quedan fijas
 
-RANGO_A = (0.45, 0.65)  # A fuera de este rango: pierde peces que empiezan a seguirse abajo o que terminan arriba
-B_MAX = 0.67            # B bajo este valor: los peces más cortos de la calibración todavía llegan a B
+RANGO_A = (0.35, 0.70)  # zona plana del barrido en val: fuera de ella el conteo empieza a perder peces
+B_MAX = 0.80            # con B >= 85 % los peces que terminan antes ya no llegan a B
 
 
 def fuera_de_rango(linea_a: float, linea_b: float) -> bool:
