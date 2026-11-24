@@ -226,10 +226,10 @@ class VideoCanvas(QWidget):
 
     def _vacio(self, p: QPainter) -> None:
         r = QRectF(self.rect()).adjusted(24, 24, -24, -24)
-        pen = QPen(QColor("#475569"), 2, Qt.DashLine)
+        pen = QPen(QColor(tema.ACERO), 1.5, Qt.DashLine)
         p.setPen(pen)
         p.setBrush(QColor(255, 255, 255, 10))
-        p.drawRoundedRect(r, 18, 18)
+        p.drawRoundedRect(r, 28, 28)
         c = r.center()
         p.setPen(Qt.NoPen)
         p.setBrush(QColor(tema.PRIMARIO))
@@ -240,12 +240,12 @@ class VideoCanvas(QWidget):
         f.setPointSize(15)
         f.setBold(True)
         p.setFont(f)
-        p.setPen(QColor("#e2e8f0"))
+        p.setPen(QColor(tema.FONDO))
         p.drawText(QRectF(r.x(), c.y() + 2, r.width(), 34), Qt.AlignCenter, "Abre un video para comenzar")
         f.setPointSize(10)
         f.setBold(False)
         p.setFont(f)
-        p.setPen(QColor("#94a3b8"))
+        p.setPen(QColor(tema.ACERO))
         p.drawText(QRectF(r.x(), c.y() + 38, r.width(), 26), Qt.AlignCenter,
                    "Haz clic aquí, usa «Abrir video» o arrastra un archivo a la ventana")
 
@@ -293,7 +293,7 @@ class VideoCanvas(QWidget):
             (xa1, xa2), (xb1, xb2) = self._span(c, c.linea_a), self._span(c, c.linea_b)
             p.drawLine(QPointF(xa1, ya), QPointF(xa2, ya))
             p.drawLine(QPointF(xb1, yb), QPointF(xb2, yb))
-            oscuro = QColor(15, 23, 42, 215)
+            oscuro = QColor(29, 29, 31, 215)
             ta, tb = ("A · entrada", "B · salida") if active else ("A", "B")
             self._pill(p, ta, QPointF(xa1 + 4, ya - 3), oscuro, pt=8)
             self._pill(p, tb, QPointF(xb1 + 4, yb + 19), oscuro, pt=8)
@@ -302,7 +302,7 @@ class VideoCanvas(QWidget):
             if on and c.id in self._conteos:
                 texto += f"  ·  {self._conteos[c.id]}"
             arriba = min(pts_w, key=lambda q: (q.y(), q.x()))
-            self._pill(p, texto, arriba + QPointF(0, -6), QColor(col) if on else QColor(100, 116, 139, 230),
+            self._pill(p, texto, arriba + QPointF(0, -6), QColor(col) if on else QColor(134, 134, 139, 230),
                        pt=12 if (on and c.id in self._conteos) else 10)
 
         p.setFont(base)
@@ -317,7 +317,7 @@ class VideoCanvas(QWidget):
                 p.setBrush(Qt.NoBrush)
                 p.setPen(QPen(color_for(t["canal"]), 2))
                 p.drawRect(caja)
-                self._pill(p, f"#{t['id']}", caja.topLeft() + QPointF(0, -2), QColor("#fde047"), fg="#1e293b", pt=8)
+                self._pill(p, f"#{t['id']}", caja.topLeft() + QPointF(0, -2), QColor("#fde047"), fg=tema.TEXTO, pt=8)
 
         ch = self._active()
         if ch is not None and ch.id == self._editing_id and not self._drawing:

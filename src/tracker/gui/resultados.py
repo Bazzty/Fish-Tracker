@@ -3,14 +3,13 @@ from __future__ import annotations
 
 import csv
 
-from PySide6.QtCore import QRectF, Qt
-from PySide6.QtGui import QColor, QFont, QPainter
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QAbstractItemView, QComboBox, QDialog, QFileDialog, QFrame, QHBoxLayout, QHeaderView, QLabel,
     QMessageBox, QPushButton, QTabWidget, QTableWidget, QTableWidgetItem, QVBoxLayout, QWidget,
 )
 
-from . import lineas, tema
+from . import lineas
 from .canvas import color_for
 from .diagnostico import ETIQUETAS, TIPOS, diagnosticar
 
@@ -47,56 +46,67 @@ def _tabla(columnas: list[str], filas: list, estirar: int | None = None) -> QTab
     return t
 
 
-def _stat(titulo: str, valor, chico: bool = False) -> QFrame:
-    """Tarjeta con una cifra grande y su etiqueta."""
+def _tarjeta_tubo(cid: str, nombre: str, n: int) -> QFrame:
+    """Tarjeta blanca de un tubo: punto de color, nombre y su conteo en grande."""
     f = QFrame()
     f.setObjectName("stat")
-    v = QLabel(str(valor))
+    punto = QLabel()
+    punto.setFixedSize(10, 10)
+    punto.setStyleSheet(f"background: {color_for(cid).name()}; border-radius: 5px;")
+    titulo = QLabel(nombre)
+    titulo.setObjectName("statTitulo")
+    fila = QHBoxLayout()
+    fila.setSpacing(8)
+    fila.addWidget(punto)
+    fila.addWidget(titulo, 1)
+    v = QLabel(str(n))
     v.setObjectName("statValor")
-    v.setProperty("chico", chico)
-    v.setWordWrap(True)
-    t = QLabel(titulo)
-    t.setObjectName("statTitulo")
+    sub = QLabel("pez" if n == 1 else "peces")
+    sub.setObjectName("statTitulo")
     lay = QVBoxLayout(f)
-    lay.setContentsMargins(14, 10, 14, 10)
-    lay.setSpacing(0)
+    lay.setContentsMargins(20, 16, 20, 16)
+    lay.setSpacing(2)
+    lay.addLayout(fila)
     lay.addWidget(v)
-    lay.addWidget(t)
+    lay.addWidget(sub)
     return f
 
 
-class BarrasConteo(QWidget):
-    """Barras horizontales: un conteo por canal (un tubo vacío se ve con 0)."""
+def _hero(total: int, filas: list, meta: dict) -> QFrame:
+    """Cabecera de resultados: el total como protagonista y debajo una tarjeta por tubo."""
+    from pathlib import Path
 
-    def __init__(self, datos: list[tuple[str, str, int]]) -> None:  # (id, nombre, conteo)
-        super().__init__()
-        self.datos = datos
-        self.setMinimumHeight(40 * max(1, len(datos)) + 10)
-
-    def paintEvent(self, _) -> None:
-        if not self.datos:
-            return
-        p = QPainter(self)
-        p.setRenderHint(QPainter.Antialiasing)
-        mx = max(1, max(n for _i, _n, n in self.datos))
-        izq, der = 130, 50
-        largo = max(10, self.width() - izq - der)
-        negrita = QFont(self.font())
-        negrita.setBold(True)
-        for i, (cid, nombre, n) in enumerate(self.datos):
-            y = 5 + i * 40
-            p.setFont(self.font())
-            p.setPen(QColor(tema.TEXTO))
-            p.drawText(QRectF(0, y, izq - 10, 28), int(Qt.AlignVCenter | Qt.AlignRight), nombre)
-            p.setPen(Qt.NoPen)
-            p.setBrush(QColor("#e2e8f0"))  # carril
-            p.drawRoundedRect(QRectF(izq, y + 5, largo, 18), 9, 9)
-            w = max(18.0, largo * n / mx)
-            p.setBrush(color_for(cid))
-            p.drawRoundedRect(QRectF(izq, y + 5, w, 18), 9, 9)
-            p.setFont(negrita)
-            p.setPen(QColor(tema.TEXTO))
-            p.drawText(QRectF(izq + largo + 8, y, 40, 28), int(Qt.AlignVCenter | Qt.AlignLeft), str(n))
+    h = QFrame()
+    h.setObjectName("hero")
+    kicker = QLabel("Resultado del conteo")
+    kicker.setObjectName("heroKicker")
+    numero = QLabel(str(total))
+    numero.setObjectName("heroNumero")
+    leyenda = QLabel("pez contado" if total == 1 else "peces contados")
+    leyenda.setObjectName("heroLeyenda")
+    video = Path(str(meta.get("video") or "")).name or "?"
+    detalle = " · ".join(x for x in (video, f"perfil {meta.get('perfil', '?')}", f"{meta.get('cuadros', '?')} cuadros",
+                                     f"{meta.get('fps', '?')} fps") if x)
+    det = QLabel(detalle)
+    det.setObjectName("ayuda")
+    det.setAlignment(Qt.AlignCenter)
+    tubos = QHBoxLayout()
+    tubos.setSpacing(16)
+    tubos.addStretch(1)
+    for nombre, cid, n in filas:
+        tubos.addWidget(_tarjeta_tubo(cid, nombre, n))
+    tubos.addStretch(1)
+    lay = QVBoxLayout(h)
+    lay.setContentsMargins(28, 24, 28, 28)
+    lay.setSpacing(4)
+    for w in (kicker, numero, leyenda):
+        w.setAlignment(Qt.AlignCenter)
+        lay.addWidget(w)
+    lay.addSpacing(4)
+    lay.addWidget(det)
+    lay.addSpacing(18)
+    lay.addLayout(tubos)
+    return h
 
 
 class ResultadosWindow(QDialog):
@@ -133,16 +143,9 @@ class ResultadosWindow(QDialog):
         filas = [[nombres.get(k, k), k, int(res.conteos[k])] for k in orden]
         total = sum(f[2] for f in filas)
 
-        cab = QHBoxLayout()
-        cab.setSpacing(10)
-        cab.addWidget(_stat("Peces contados", total))
-        cab.addWidget(_stat("Video", m.get("video", "?"), chico=True), 2)
-        cab.addWidget(_stat("Perfil", m.get("perfil", "?"), chico=True))
-        cab.addWidget(_stat("Cuadros", m.get("cuadros", "?"), chico=True))
-        cab.addWidget(_stat("FPS", m.get("fps", "?"), chico=True))
+        hero = _hero(total, filas, m)
         tabla = _tabla(["Tubo", "Canal", "Conteo"], filas + [["TOTAL", "", total]])
         tabla.setMaximumHeight(46 + 34 * (len(filas) + 1))
-        barras = BarrasConteo([(k, n, c) for n, k, c in filas])
         nota = QLabel("Un tubo sin peces cuenta 0.")
         nota.setObjectName("ayuda")
 
@@ -153,7 +156,6 @@ class ResultadosWindow(QDialog):
         )
         izq = QVBoxLayout()
         izq.addWidget(tabla)
-        izq.addWidget(barras)
         izq.addWidget(nota)
         izq.addStretch(1)
         der = QVBoxLayout()
@@ -168,7 +170,7 @@ class ResultadosWindow(QDialog):
         lay = QVBoxLayout(w)
         lay.setContentsMargins(0, 8, 0, 0)
         lay.setSpacing(12)
-        lay.addLayout(cab)
+        lay.addWidget(hero)
         lay.addLayout(fila, 1)
         return w
 
