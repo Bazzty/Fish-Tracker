@@ -41,7 +41,7 @@ Paso 3 y 4 del panel derecho: **⚙ Procesar video**, **Exportar resultados…**
 - **Exportar** guarda **un solo archivo** `<video>_<perfil>.json` (`exportar_json.py`) con la forma exacta de los tubos, el conteo,
   las trayectorias, el diagnóstico y, cuadro por cuadro, detecciones, cajas con ID y eventos. Se relee al guardarlo
   (`exportar_json.leer_json`) para comprobar que quedó bien; **Ver resultados** abre ese mismo JSON.
-- Mientras procesa, cada pez deja su **línea de seguimiento** (el recorrido de su centro, del color del tubo; verde cuando ya se contó),
+- Mientras procesa, cada pez deja su **línea de seguimiento** (el recorrido de su centro, del color del tubo; más gruesa cuando ya se contó),
   igual que en el video anotado de la CLI.
 - Errores claros: sin video, sin tubos, ningún tubo marcado, pesos no encontrados, perfil no implementado, GPU no soportada,
   carpeta sin permiso de escritura, archivo de resultados inválido.

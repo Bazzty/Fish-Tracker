@@ -164,7 +164,7 @@ class HiloProceso(QThread):
                 ahora = time.monotonic()
                 if ahora - ultimo[0] >= 0.04:  # no saturar la ventana si el detector es rápido
                     ultimo[0] = ahora
-                    # los eventos de cuadros saltados viajan con este: si no, la línea de ese pez no pasa a verde
+                    # los eventos de cuadros saltados viajan con este: si no, la línea de ese pez no se engruesa al contarse
                     self.avance.emit(ids.avance(dataclasses.replace(av, eventos=list(eventos_pendientes))))
                     eventos_pendientes.clear()
 

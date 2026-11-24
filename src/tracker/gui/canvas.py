@@ -65,7 +65,7 @@ class VideoCanvas(QWidget):
         self._drag: dict | None = None
         self._overlay: tuple[list, list] | None = None  # (detecciones, trayectorias) del cuadro en vivo
         self._rutas: dict[tuple[str, int], list[tuple[float, float]]] = {}  # (canal, id) -> centros recorridos
-        self._contados: set[tuple[str, int]] = set()  # peces ya contados: su línea pasa a verde
+        self._contados: set[tuple[str, int]] = set()  # peces ya contados: su línea se dibuja más gruesa
         self._conteos: dict[str, int] = {}
         self.setMinimumSize(640, 360)
         self.setCursor(Qt.PointingHandCursor)
@@ -217,14 +217,20 @@ class VideoCanvas(QWidget):
         return pt is not None and punto_en_poligono(pt[0], pt[1], ch.puntos)
 
     # ---------- dibujo ----------
+    def _pill_size(self, texto: str, pt: int = 9, negrita: bool = True) -> tuple[float, float]:
+        f = QFont(self.font())
+        f.setPointSize(pt)
+        f.setBold(negrita)
+        fm = QFontMetricsF(f)
+        return fm.horizontalAdvance(texto) + 14, fm.height() + 4
+
     def _pill(self, p: QPainter, texto: str, ancla: QPointF, fondo: QColor, fg: str = "#ffffff",
               pt: int = 9, negrita: bool = True) -> None:
         """Etiqueta redondeada cuya esquina inferior izquierda queda en `ancla`."""
         f = QFont(self.font())
         f.setPointSize(pt)
         f.setBold(negrita)
-        fm = QFontMetricsF(f)
-        w, h = fm.horizontalAdvance(texto) + 14, fm.height() + 4
+        w, h = self._pill_size(texto, pt, negrita)
         r = QRectF(ancla.x(), ancla.y() - h, w, h)
         p.setPen(Qt.NoPen)
         p.setBrush(fondo)
@@ -232,6 +238,37 @@ class VideoCanvas(QWidget):
         p.setFont(f)
         p.setPen(QColor(fg))
         p.drawText(r, Qt.AlignCenter, texto)
+
+    def _etiquetas_tubos(self, p: QPainter) -> None:
+        """Nombre (y conteo) de cada tubo, arriba a la izquierda DENTRO del tubo.
+
+        Se dibujan después de todos los tubos para que ninguno las tape, quedan siempre dentro del video (no se
+        cortan por el borde) y, si dos chocan, la siguiente baja hasta quedar libre.
+        """
+        area = self._target_rect().intersected(QRectF(self.rect())).adjusted(2, 2, -2, -2)
+        ocupadas: list[QRectF] = []
+        for c in self._channels:
+            on = c.activo
+            texto = c.nombre or c.id
+            con_conteo = on and c.id in self._conteos
+            if con_conteo:
+                texto += f"  ·  {self._conteos[c.id]}"
+            pt = 12 if con_conteo else 10
+            w, h = self._pill_size(texto, pt)
+            esq = self._to_widget(c.puntos[0])  # esquina arriba-izq. del tubo (también si está torcido)
+            x = max(area.left(), min(esq.x() + 4, area.right() - w))
+            y = max(area.top(), min(esq.y() + 4, area.bottom() - h))
+            r = QRectF(x, y, w, h)
+            for _ in range(len(ocupadas) + 1):  # baja bajo la que choca; con n etiquetas basta con n intentos
+                choque = next((o for o in ocupadas if o.intersects(r)), None)
+                if choque is None:
+                    break
+                r.moveTop(choque.bottom() + 3)
+            if r.bottom() > area.bottom():  # sin espacio abajo: se queda pegada al borde inferior
+                r.moveBottom(area.bottom())
+            ocupadas.append(r)
+            fondo = QColor(color_for(c.id)) if on else QColor(134, 134, 139, 230)
+            self._pill(p, texto, r.bottomLeft(), fondo, pt=pt)
 
     def _vacio(self, p: QPainter) -> None:
         r = QRectF(self.rect()).adjusted(24, 24, -24, -24)
@@ -307,13 +344,7 @@ class VideoCanvas(QWidget):
             self._pill(p, ta, QPointF(xa1 + 4, ya - 3), oscuro, pt=8)
             self._pill(p, tb, QPointF(xb1 + 4, yb + 19), oscuro, pt=8)
 
-            texto = c.nombre or c.id
-            if on and c.id in self._conteos:
-                texto += f"  ·  {self._conteos[c.id]}"
-            arriba = min(pts_w, key=lambda q: (q.y(), q.x()))
-            self._pill(p, texto, arriba + QPointF(0, -6), QColor(col) if on else QColor(134, 134, 139, 230),
-                       pt=12 if (on and c.id in self._conteos) else 10)
-
+        self._etiquetas_tubos(p)
         p.setFont(base)
         if self._overlay is not None:
             dets, tray = self._overlay
@@ -321,12 +352,11 @@ class VideoCanvas(QWidget):
             p.setPen(QPen(QColor(255, 255, 255, 110), 1))
             for d in dets:
                 p.drawRect(QRectF(self._to_widget((d["x1"], d["y1"])), self._to_widget((d["x2"], d["y2"]))))
-            for t in tray:  # línea del seguimiento: el recorrido del pez hasta este cuadro (verde si ya se contó)
+            for t in tray:  # línea del seguimiento: el recorrido del pez, del color de su tubo (más gruesa si ya se contó)
                 clave = (t["canal"], int(t["id"]))
                 ruta = self._rutas.get(clave, ())
                 if len(ruta) > 1:
-                    col = QColor(tema.OK) if clave in self._contados else QColor(color_for(t["canal"]))
-                    pen = QPen(col, 2.5)
+                    pen = QPen(color_for(t["canal"]), 2.5 if clave in self._contados else 1.25)
                     pen.setCapStyle(Qt.RoundCap)
                     pen.setJoinStyle(Qt.RoundJoin)
                     p.setPen(pen)
