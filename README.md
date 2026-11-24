@@ -91,7 +91,7 @@ Fish-Tracker/
 5. **Exportar resultados…** escribe el formato común en `<carpeta elegida>/<video>_<perfil>/` y lo valida. Los errores (sin video, sin tubos marcados, pesos no encontrados, carpeta sin permiso, archivos que no cumplen el formato) se muestran con un mensaje claro.
 6. **Ver resultados:** el último procesamiento, o una carpeta del formato común (por ejemplo `docs/ejemplo_formato`). Muestra el conteo por tubo, los eventos de conteo y un **diagnóstico del seguimiento** (`diagnostico.py`) que clasifica *caja intermitente*, *ID perdido* e *ID nuevo* a partir de `trayectorias.csv`. Es una heurística sin etiquetas de referencia; sus umbrales están en `diagnostico.Params`.
 
-Los tubos nuevos parten con las líneas en A = 55 % y B = 65 % del alto (`src/tracker/gui/lineas.py`).
+Los tubos nuevos parten con las líneas en A = 50 % y B = 60 % del alto (`src/tracker/gui/lineas.py`), elegidas en validación.
 
 ## Tracker
 
