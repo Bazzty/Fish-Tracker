@@ -11,13 +11,14 @@ from PySide6.QtGui import QColor, QDesktopServices, QIcon, QImage, QKeySequence,
 from PySide6.QtWidgets import (
     QAbstractSpinBox, QApplication, QCheckBox, QComboBox, QFileDialog, QFrame, QGridLayout, QHBoxLayout,
     QLabel, QLineEdit, QListWidget, QListWidgetItem, QMainWindow, QMessageBox, QProgressBar, QPushButton,
-    QScrollArea, QSizePolicy, QSlider, QSpinBox, QVBoxLayout, QWidget,
+    QScrollArea, QSizePolicy, QSpinBox, QVBoxLayout, QWidget,
 )
 
 from tracker.canales import Canal
 
 from . import lineas, proceso, tema
 from .canal_libre import CanalLibre, cargar_canales_libres, guardar_canales_libres
+from .barra import BarraConMarcas
 from .canvas import VideoCanvas, color_for, num_de
 from .exportar_json import guardar_carpeta, leer_json, nombre_secuencia
 from .proceso import GPU_NO_SOPORTADA, HiloProceso, descripcion_modelo, nombre_modelo
@@ -82,9 +83,9 @@ class MainWindow(QMainWindow):
         self.canvas.drawing_changed.connect(self._on_drawing_changed)
 
         # ---- reproducción: solo Play y la barra ----
-        self.slider = QSlider(Qt.Horizontal)
+        self.slider = BarraConMarcas()
         self.slider.setEnabled(False)
-        self.slider.setMinimumHeight(26)
+        self.slider.setMinimumHeight(32)
         self.slider.valueChanged.connect(self._show_frame)
         self.frame_label = QLabel("Cuadro: -")
         self.frame_label.setObjectName("ayuda")
@@ -862,6 +863,7 @@ class MainWindow(QMainWindow):
         self.lbl_resumen.setText("Aún no hay resultados.")
         self.canvas.clear_overlay()
         self.canvas.set_conteos({})
+        self.slider.limpiar_marcas()
 
     def _confirm_resultado(self) -> bool:
         """Avisa si hay un resultado procesado que todavía no se exportó."""
@@ -979,12 +981,23 @@ class MainWindow(QMainWindow):
         self.resultado, self._exportado = res, False
         self.conteos = {k: int(v) for k, v in res.conteos.items()}
         self._push_conteos()
+        self._marcar_conteos(res)
         self.btn_exportar.setEnabled(True)
         self.lbl_resumen.setText(f"Total: {sum(self.conteos.values())} peces contados en {len(self.conteos)} tubo(s)")
         self.statusBar().showMessage(
             f"Listo: {sum(self.conteos.values())} peces contados en {len(self.conteos)} tubo(s). "
             "Puedes ver o exportar los resultados.")
         self._actualizar_guia()
+
+    def _marcar_conteos(self, res) -> None:
+        """Un punto en la barra por cada pez contado (clic: ir a ese cuadro)."""
+        nombres = {c.id: (c.nombre or c.id) for c in res.canales}
+        fps = float(res.meta.get("fps") or 0) or self.fps
+        self.slider.set_marcas([
+            (int(e["cuadro"]), color_for(e["canal"]),
+             f"{nombres.get(e['canal'], e['canal'])}: pez #{e['id']} (n.º {e['conteo']}) · "
+             f"cuadro {int(e['cuadro']) + 1} · {float(e.get('tiempo_s') or e['cuadro'] / fps):.1f} s")
+            for e in res.eventos])
 
     def _on_fallo(self, mensaje: str) -> None:
         self._fin_proceso()
