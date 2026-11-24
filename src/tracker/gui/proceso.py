@@ -154,15 +154,19 @@ class HiloProceso(QThread):
 
             ultimo = [0.0]
             ids = RenumeradorIds()
+            eventos_pendientes: list[dict] = []  # conteos de cuadros que no se mostraron
 
             def al_avanzar(av) -> None:
                 if self._cancelar:
                     raise _Cancelado()
                 ids.registrar(av)  # todos los cuadros, en orden, aunque no se muestren
+                eventos_pendientes.extend(av.eventos)
                 ahora = time.monotonic()
                 if ahora - ultimo[0] >= 0.04:  # no saturar la ventana si el detector es rápido
                     ultimo[0] = ahora
-                    self.avance.emit(ids.avance(av))
+                    # los eventos de cuadros saltados viajan con este: si no, la línea de ese pez no pasa a verde
+                    self.avance.emit(ids.avance(dataclasses.replace(av, eventos=list(eventos_pendientes))))
+                    eventos_pendientes.clear()
 
             res = procesar(self.video, self.canales, self.perfil, al_avanzar=al_avanzar, cfg=cfg)
             ids.resultados(res)
